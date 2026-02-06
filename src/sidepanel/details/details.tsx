@@ -139,16 +139,34 @@ function sourceDetails(
 }
 
 function fileDetails(objectEntries: GedcomEntry[], gedcom: GedcomData) {
+  console.log("function fileDetails");
+  console.log(objectEntries);
+/*
   const files = objectEntries
-    .map((objectEntry) =>
-      dereference(objectEntry, gedcom, (gedcom) => gedcom.other),
-    )
+    .map((objectEntry) => dereference(objectEntry, gedcom, (gedcom) => gedcom.other))
     .map((objectEntry) => getNonImageFileEntry(objectEntry))
     .filter((objectEntry): objectEntry is GedcomEntry => !!objectEntry)
     .map((fileEntry) => ({
       url: fileEntry.data,
       filename: getFileName(fileEntry),
     }));
+*/
+/* begin modification */
+  const files = [];
+  objectEntries
+    .map((objectEntry) => dereference(objectEntry, gedcom, (gedcom) => gedcom.other))
+    .forEach((objectEntry) => {
+      const fileEntry = getNonImageFileEntry(objectEntry);
+      if (!!fileEntry) {
+        files.push({
+          url: fileEntry.data,
+          form: objectEntry.tree.find((entry) => entry.tag === 'FORM')?.data,
+          titl: objectEntry.tree.find((entry) => entry.tag === 'TITL')?.data,
+          tag: fileEntry.tag,
+        })
+      }
+    });
+/* end modification */
 
   if (!files.length) {
     return null;
