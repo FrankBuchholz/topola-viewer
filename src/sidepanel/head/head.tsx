@@ -5,8 +5,7 @@ import {
 import {FormattedMessage} from 'react-intl';
 import {Header, Divider, List} from 'semantic-ui-react';
 
-export function head(gedcom: GedcomData){
-console.log("function head");
+export function SourceHead(gedcom: GedcomData){
 /* Example:
 0 HEAD
   1 SOUR Gramps
@@ -61,7 +60,7 @@ console.log("function head");
   const location = [adr1, post, city].filter(Boolean).join(', '); // Combined location
 
   /* Don't show the section if there is no relevant information */
-  if ([sour_name, date, filename, copr, name, phon, email, location].filter(Boolean).length === 0) {
+  if (!(sour_name || date || filename || copr || name || phon || email || location)) {
     return null;
   }
 

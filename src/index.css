@@ -143,6 +143,10 @@ div.zoom {
   margin-top: 0px;
 }
 
+.ui.sub.header, .ui.list {
+  margin-left: 20px;
+} 
+
 .details {
   padding: 15px 0px;
   border-bottom: 1px solid rgba(34,36,38,.15);

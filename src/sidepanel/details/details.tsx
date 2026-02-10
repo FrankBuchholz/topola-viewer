@@ -11,7 +11,7 @@ import {
   getNonImageFileEntry,
   mapToSource,
 } from '../../util/gedcom_util';
-import {AdditionalFiles} from './additional-files';
+import {FileEntry, AdditionalFiles} from './additional-files';
 import {ALL_SUPPORTED_EVENT_TYPES, Events} from './events';
 import {MultilineText} from './multiline-text';
 import {Sources} from './sources';
@@ -139,8 +139,6 @@ function sourceDetails(
 }
 
 function fileDetails(objectEntries: GedcomEntry[], gedcom: GedcomData) {
-  console.log("function fileDetails");
-  console.log(objectEntries);
 /*
   const files = objectEntries
     .map((objectEntry) => dereference(objectEntry, gedcom, (gedcom) => gedcom.other))
@@ -152,7 +150,7 @@ function fileDetails(objectEntries: GedcomEntry[], gedcom: GedcomData) {
     }));
 */
 /* begin modification */
-  const files = [];
+  const files: FileEntry[] = [];
   objectEntries
     .map((objectEntry) => dereference(objectEntry, gedcom, (gedcom) => gedcom.other))
     .forEach((objectEntry) => {

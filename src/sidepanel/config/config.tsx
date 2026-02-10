@@ -1,3 +1,5 @@
+import {SourceHead} from '../head/head';
+import {GedcomData} from '../../util/gedcom_util';
 import {ParsedQuery} from 'query-string';
 import {FormattedMessage} from 'react-intl';
 import {Checkbox, Form, Header, Item} from 'semantic-ui-react';
@@ -74,6 +76,7 @@ export function configToArgs(config: Config): ParsedQuery<any> {
 }
 
 export function ConfigPanel(props: {
+  gedcom: GedcomData;
   config: Config;
   onChange: (config: Config) => void;
 }) {
@@ -105,17 +108,7 @@ export function ConfigPanel(props: {
   */
   return (
     <>
-    <Form className="header">
-      <Item.Group>
-        <Item>
-          <Item.Content>
-            <Header sub>
-              <FormattedMessage id="header.head" defaultMessage="HEAD" />
-            </Header>
-          </Item.Content>
-        </Item>
-      </Item.Group>
-    </Form>
+    {SourceHead(props.gedcom)}
     <Form className="details">
       <Item.Group>
         <Item>
