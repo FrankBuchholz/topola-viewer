@@ -348,7 +348,33 @@ class ChartWrapper {
         chartType: getChartType(props.chartType),
         renderer: getRendererType(props.chartType),
         svgSelector: '#chart',
-        indiCallback: (info) => props.onSelection(info),
+        indiCallback: (info) => { // ths is called when an individual is selected in the chart
+            console.log('indiCallback: Selected individual', info);
+            console.log('props', props);
+            props.onSelection(info) 
+        },
+        // begin addition
+        // see node_modules\topola\dist\detailled-renderer.js
+        // function renderIndi line 273
+        /* Object literal may only specify known properties, and 'famHrefFunc' does not exist in type 'SimpleChartOptions', see node_modules\topola\dist\simple-api.dts
+        indiHrefFunc: (id) => {
+            console.log('indiHrefFunc: Selected id', id);
+        },
+        */
+        // see node_modules\topola\dist\detailled-renderer.js
+        // function renderFamily line 348
+        /* Object literal may only specify known properties, and 'famHrefFunc' does not exist in type 'SimpleChartOptions', see node_modules\topola\dist\simple-api.dts
+        famHrefFunc: (id) => { // This is called when a family is selected in the chart. The id is the family id, which is not used in the current implementation but can be useful for future features.
+            console.log('famHrefFunc: Selected id', id);
+        },
+        */      
+        famCallback: (info) => { 
+            console.log('famCallback: Selected family', info);
+            console.log('famCallback: props', props);
+            //props.onSelection(info) 
+        },
+        horizontal: false, // Render the chart horizontally. This is optional and can be set to false (default) to render the chart vertically.
+        // end addition
         colors: chartColors.get(props.colors!),
         animate: true,
         updateSvgSize: false,
