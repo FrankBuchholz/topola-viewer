@@ -182,6 +182,10 @@ div.zoom {
   text-transform: none; /* uppercase; */
 }
 
+.ui.sub.header, .ui.list {
+  margin-left: 20px;
+}
+
 .limit-height {
   height: 300px;
   overflow-y: scroll;
