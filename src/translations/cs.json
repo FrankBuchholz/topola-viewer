@@ -132,6 +132,7 @@
   "config.orientation": "Orientace",
   "config.orientation.VERTICAL": "vertikální",
   "config.orientation.HORIZONTAL": "horizontální",
+  "head.source": "Zdroj dat",
   "name.unknown_name": "N.N.",
   "extras.images": "Obrázky",
   "extras.notes": "Poznámky",

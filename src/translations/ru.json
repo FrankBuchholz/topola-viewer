@@ -132,6 +132,7 @@
   "config.orientation": "Ориентация",
   "config.orientation.VERTICAL": "вертикальная",
   "config.orientation.HORIZONTAL": "горизонтальная",  
+  "head.source": "Источник данных",  
   "name.unknown_name": "Неизвестно",
   "extras.images": "Картинки",
   "extras.notes": "Примечание",

@@ -132,6 +132,8 @@
   "config.orientation": "Orientacja",
   "config.orientation.VERTICAL": "pionowa",
   "config.orientation.HORIZONTAL": "pozioma",  
+  "config.sex.SHOW": "pokaż",    
+  "head.source": "Źródło danych",  
   "name.unknown_name": "N.N.",
   "extras.images": "Zdjęcia",
   "extras.notes": "Notatki",

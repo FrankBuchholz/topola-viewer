@@ -132,6 +132,7 @@
   "config.orientation": "Orientamento",
   "config.orientation.VERTICAL": "verticale",
   "config.orientation.HORIZONTAL": "orizzontale",
+  "head.source": "Origine dati",
   "name.unknown_name": "N.N.",
   "extras.images": "Immagini",
   "extras.notes": "Appunti",
