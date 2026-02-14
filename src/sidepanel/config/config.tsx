@@ -20,16 +20,23 @@ export enum Sex {
   SHOW,
 }
 
+export enum Orientation {
+  VERTICAL,
+  HORIZONTAL,
+}
+
 export interface Config {
   color: ChartColors;
   id: Ids;
   sex: Sex;
+  orientation: Orientation;
 }
 
 export const DEFALUT_CONFIG: Config = {
   color: ChartColors.COLOR_BY_GENERATION,
   id: Ids.SHOW,
   sex: Sex.SHOW,
+  orientation: Orientation.VERTICAL,
 };
 
 const COLOR_ARG = new Map<string, ChartColors>([
@@ -54,6 +61,13 @@ const SEX_ARG = new Map<string, Sex>([
 const SEX_ARG_INVERSE = new Map<Sex, string>();
 SEX_ARG.forEach((v, k) => SEX_ARG_INVERSE.set(v, k));
 
+const ORIENTATION_ARG = new Map<string, Orientation>([
+  ['v', Orientation.VERTICAL],
+  ['h', Orientation.HORIZONTAL],
+]);
+const ORIENTATION_ARG_INVERSE = new Map<Orientation, string>();
+ORIENTATION_ARG.forEach((v, k) => ORIENTATION_ARG_INVERSE.set(v, k));
+
 export function argsToConfig(args: ParsedQuery<any>): Config {
   const getParam = (name: string) => {
     const value = args[name];
@@ -64,6 +78,7 @@ export function argsToConfig(args: ParsedQuery<any>): Config {
     color: COLOR_ARG.get(getParam('c') ?? '') ?? DEFALUT_CONFIG.color,
     id: ID_ARG.get(getParam('i') ?? '') ?? DEFALUT_CONFIG.id,
     sex: SEX_ARG.get(getParam('s') ?? '') ?? DEFALUT_CONFIG.sex,
+    orientation: ORIENTATION_ARG.get(getParam('o') ?? '') ?? DEFALUT_CONFIG.orientation,
   };
 }
 
@@ -72,6 +87,7 @@ export function configToArgs(config: Config): ParsedQuery<any> {
     c: COLOR_ARG_INVERSE.get(config.color),
     i: ID_ARG_INVERSE.get(config.id),
     s: SEX_ARG_INVERSE.get(config.sex),
+    o: ORIENTATION_ARG_INVERSE.get(config.orientation),
   };
 }
 
@@ -232,7 +248,46 @@ export function ConfigPanel(props: {
             </Form.Field>
           </Item.Content>
         </Item>
-      </Item.Group>
+         <Item>
+          <Item.Content>
+            <Header sub>
+              <FormattedMessage id="config.orientation" defaultMessage="Orientation" />
+            </Header>
+            <Form.Field className="no-margin">
+              <Checkbox
+                radio
+                label={
+                  <FormattedMessage
+                    tagName="label"
+                    id="config.orientation.VERTICAL"
+                    defaultMessage="vertical"
+                  />
+                }
+                name="checkboxRadioGroup"
+                value="vertical"
+                checked={props.config.orientation === Orientation.VERTICAL}
+                onClick={() => props.onChange({...props.config, orientation: Orientation.VERTICAL})}
+              />
+            </Form.Field>
+            <Form.Field className="no-margin">
+              <Checkbox
+                radio
+                label={
+                  <FormattedMessage
+                    tagName="label"
+                    id="config.orientation.HORIZONTAL"
+                    defaultMessage="horizontal"
+                  />
+                }
+                name="checkboxRadioGroup"
+                value="horizontal"
+                checked={props.config.orientation === Orientation.HORIZONTAL}
+                onClick={() => props.onChange({...props.config, orientation: Orientation.HORIZONTAL})}
+              />
+            </Form.Field>
+          </Item.Content>
+        </Item>
+     </Item.Group>
     </Form>
     </>
   );

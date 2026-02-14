@@ -528,6 +528,7 @@ export function App() {
         colors={config.color}
         hideIds={config.id}
         hideSex={config.sex}
+        orientation={config.orientation}
       />
     );
   }

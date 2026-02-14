@@ -25,7 +25,7 @@ import {
   RelativesChart,
   ChartColors as TopolaChartColors,
 } from 'topola';
-import {ChartColors, Ids, Sex} from './sidepanel/config/config';
+import {ChartColors, Ids, Orientation, Sex} from './sidepanel/config/config';
 import {Media} from './util/media';
 import {usePrevious} from './util/previous-hook';
 
@@ -296,6 +296,7 @@ export interface ChartProps {
   colors?: ChartColors;
   hideIds?: Ids;
   hideSex?: Sex;
+  orientation?: Orientation;
 }
 
 class ChartWrapper {
@@ -350,6 +351,7 @@ class ChartWrapper {
         svgSelector: '#chart',
         indiCallback: (info) => props.onSelection(info),
         colors: chartColors.get(props.colors!),
+        horizontal: props.orientation === Orientation.HORIZONTAL,
         animate: true,
         updateSvgSize: false,
         locale: intl.locale,
@@ -448,7 +450,8 @@ export function Chart(props: ChartProps) {
         props.chartType !== prevProps?.chartType ||
         props.colors !== prevProps?.colors ||
         props.hideIds !== prevProps?.hideIds ||
-        props.hideSex !== prevProps?.hideSex;
+        props.hideSex !== prevProps?.hideSex ||
+        props.orientation !== prevProps.orientation;
       const resetPosition =
         props.chartType !== prevProps?.chartType ||
         props.data !== prevProps.data ||
