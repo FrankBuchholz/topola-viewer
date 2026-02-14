@@ -2,36 +2,12 @@ import {
   dereference,
   GedcomData,
 } from '../../util/gedcom_util';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {Header, Divider, List} from 'semantic-ui-react';
+import {getDate} from 'topola';
+import {formatDateOrRange} from '../../util/date_util';
 
 export function SourceHead(gedcom: GedcomData){
-/* Example:
-0 HEAD
-  1 SOUR Gramps
-    2 VERS AIO64-6.0.6--1
-    2 NAME Gramps
-  1 DATE 27 JAN 2026
-    2 TIME 18:55:47
-  1 SUBM @SUBM@
-  1 FILE C:\Users\frank\Documents\Ahnenblatt\buchholz.ged
-  1 COPR Copyright (c) 2026 Frank Buchholz.
-  1 GEDC
-    2 VERS 5.5.1
-    2 FORM LINEAGE-LINKED
-  1 CHAR UTF-8
-  1 LANG German
-0 @SUBM@ SUBM
-  1 NAME Frank Buchholz
-  1 ADDR Mertzgarten 11
-    2 CONT Wiesloch
-    2 CONT 69168
-    2 ADR1 Mertzgarten 11
-    2 CITY Wiesloch
-    2 POST 69168
-  1 PHON 02841 16662
-  1 EMAIL frank.buchholz@@web.de
-*/
   const head = gedcom.head;
   /* Don't show the section if there is no relevant information */
   if (!head || !head.tree) {
@@ -40,7 +16,11 @@ export function SourceHead(gedcom: GedcomData){
 
   const sour = head.tree.find((entry) => entry.tag === 'SOUR');
   const sour_name = sour && sour.tree && sour.tree.find((entry) => entry.tag === 'NAME')?.data; // Software name
-  const date = head.tree.find((entry) => entry.tag === 'DATE')?.data; // Creation date
+
+  const date = head.tree.find((entry) => entry.tag === 'DATE'); // Creation date
+  const intl = useIntl();
+  const dateFormatted = date ? formatDateOrRange(getDate(date.data), intl) : null; // Formatted creation date
+
   const file = head.tree.find((entry) => entry.tag === 'FILE')?.data; // File path
   const filename = file && ( file.split('\\').pop() || file.split('/').pop() ); // Extract file name from path
   const copr = head.tree.find((entry) => entry.tag === 'COPR')?.data; // Copyright
@@ -60,7 +40,7 @@ export function SourceHead(gedcom: GedcomData){
   const location = [adr1, post, city].filter(Boolean).join(', '); // Combined location
 
   /* Don't show the section if there is no relevant information */
-  if (!(sour_name || date || filename || copr || name || phon || email || location)) {
+  if (!(sour_name || dateFormatted || filename || copr || name || phon || email || location)) {
     return null;
   }
 
@@ -81,7 +61,7 @@ export function SourceHead(gedcom: GedcomData){
         {date && (
           <List.Item>
             <List.Icon name='calendar' />
-            <List.Content>{date}</List.Content>
+            <List.Content>{dateFormatted}</List.Content>
           </List.Item>
         )}
         {file && (

@@ -108,8 +108,7 @@ export function ConfigPanel(props: {
   */
   return (
     <>
-    {SourceHead(props.gedcom)}
-    <Form className="details">
+    {SourceHead(props.gedcom)}<Form className="details">
       <Item.Group>
         <Item>
           <Item.Content>
