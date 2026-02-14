@@ -80,6 +80,32 @@ export function ConfigPanel(props: {
   config: Config;
   onChange: (config: Config) => void;
 }) {
+  /*
+0 HEAD
+1 SOUR Gramps
+2 VERS AIO64-6.0.6--1
+2 NAME Gramps
+1 DATE 27 JAN 2026
+2 TIME 18:55:47
+1 SUBM @SUBM@
+1 FILE C:\Users\frank\Documents\Ahnenblatt\buchholz.ged
+1 COPR Copyright (c) 2026 Frank Buchholz.
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG German
+0 @SUBM@ SUBM
+1 NAME Frank Buchholz
+1 ADDR Mertzgarten 11
+2 CONT Wiesloch
+2 CONT 69168
+2 ADR1 Mertzgarten 11
+2 CITY Wiesloch
+2 POST 69168
+1 PHON 02841 16662
+1 EMAIL frank.buchholz@@web.de
+  */
   return (
     <>
     {SourceHead(props.gedcom)}<Form className="details">

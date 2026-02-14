@@ -143,6 +143,10 @@ div.zoom {
   margin-top: 0px;
 }
 
+.ui.sub.header, .ui.list {
+  margin-left: 20px;
+} 
+
 .details {
   padding: 15px 0px;
   border-bottom: 1px solid rgba(34,36,38,.15);
@@ -161,7 +165,7 @@ div.zoom {
 }
 
 .details .item-header .header {
-  text-transform: uppercase;
+  text-transform: none; /* uppercase; */
   margin: 0;
   min-width: 40%;
 }
@@ -175,7 +179,11 @@ div.zoom {
 }
 
 .ui.tabular.menu a {
-  text-transform: uppercase;
+  text-transform: none; /* uppercase; */
+}
+
+.ui.sub.header {
+  text-transform: none; /* uppercase; */
 }
 
 .ui.sub.header, .ui.list {
