@@ -528,6 +528,7 @@ console.log('Updating selection to', args.selection, 'with data', data);
         colors={config.color}
         hideIds={config.id}
         hideSex={config.sex}
+        orientation={config.orientation}
       />
     );
   }
