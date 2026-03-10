@@ -325,6 +325,7 @@ interface Props {
 }
 
 export function Details(props: Props) {
+console.log('Rendering details for indi', props.indi);
   const entries = props.gedcom.indis[props.indi].tree;
 
   return (

@@ -374,10 +374,9 @@ class ChartWrapper {
             console.log('famCallback: props', props);
             //props.onSelection(info) 
         },
-        horizontal: false, // Render the chart horizontally. This is optional and can be set to false (default) to render the chart vertically.
         // end addition
         colors: chartColors.get(props.colors!),
-        horizontal: props.orientation === Orientation.HORIZONTAL,
+        horizontal: props.orientation === Orientation.HORIZONTAL, // Render the chart horizontally.
         animate: true,
         updateSvgSize: false,
         locale: intl.locale,

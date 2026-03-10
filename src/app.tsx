@@ -141,6 +141,7 @@ function getArguments(location: H.Location<any>): Arguments {
   const getParam = (name: string) => getParamFromSearch(name, search);
 
   const view = getParam('view');
+console.log('getArguments', 'view', view);
   const chartTypes = new Map<string | undefined, ChartType>([
     ['relatives', ChartType.Relatives],
     ['fancy', ChartType.Fancy],
@@ -363,7 +364,9 @@ export function App() {
         }
         return;
       }
+
       const args = getArguments(location);
+
       if (!args.sourceSpec) {
         navigate({pathname: '/'}, {replace: true});
         return;
