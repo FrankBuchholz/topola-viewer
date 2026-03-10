@@ -141,6 +141,7 @@ function getArguments(location: H.Location<any>): Arguments {
   const getParam = (name: string) => getParamFromSearch(name, search);
 
   const view = getParam('view');
+console.log('getArguments', 'view', view);
   const chartTypes = new Map<string | undefined, ChartType>([
     ['relatives', ChartType.Relatives],
     ['fancy', ChartType.Fancy],
@@ -407,6 +408,7 @@ export function App() {
         setState(
           loadMoreFromWikitree ? AppState.LOADING_MORE : AppState.SHOWING_CHART,
         );
+console.log('Updating selection to', args.selection, 'with data', data);
         updateDisplay(getSelection(data!.chartData, args.selection));
         if (loadMoreFromWikitree) {
           try {
@@ -446,6 +448,7 @@ export function App() {
    * Updates the browser URL.
    */
   function onSelection(selection: IndiInfo) {
+  console.log('Selected individual', selection);
     // Don't allow selecting WikiTree private profiles.
     if (selection.id.startsWith(PRIVATE_ID_PREFIX)) {
       return;
@@ -528,6 +531,7 @@ export function App() {
         colors={config.color}
         hideIds={config.id}
         hideSex={config.sex}
+        orientation={config.orientation}
       />
     );
   }

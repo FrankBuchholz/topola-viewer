@@ -139,6 +139,17 @@ function sourceDetails(
 }
 
 function fileDetails(objectEntries: GedcomEntry[], gedcom: GedcomData) {
+/*
+  const files = objectEntries
+    .map((objectEntry) => dereference(objectEntry, gedcom, (gedcom) => gedcom.other))
+    .map((objectEntry) => getNonImageFileEntry(objectEntry))
+    .filter((objectEntry): objectEntry is GedcomEntry => !!objectEntry)
+    .map((fileEntry) => ({
+      url: fileEntry.data,
+      filename: getFileName(fileEntry),
+    }));
+*/
+/* begin modification */
   const files: FileEntry[] = [];
   objectEntries
     .map((objectEntry) => dereference(objectEntry, gedcom, (gedcom) => gedcom.other))
@@ -147,6 +158,13 @@ function fileDetails(objectEntries: GedcomEntry[], gedcom: GedcomData) {
       if (!!fileEntry) {
         files.push({
           url: fileEntry.data,
+          form: objectEntry.tree.find((entry) => entry.tag === 'FORM')?.data,
+          titl: objectEntry.tree.find((entry) => entry.tag === 'TITL')?.data,
+          tag: fileEntry.tag,
+        })
+      }
+    });
+/* end modification */
           filename: getFileName(fileEntry),
           titl: objectEntry.tree.find((entry) => entry.tag === 'TITL')?.data,
         })
@@ -312,6 +330,7 @@ interface Props {
 }
 
 export function Details(props: Props) {
+console.log('Rendering details for indi', props.indi);
   const entries = props.gedcom.indis[props.indi].tree;
 
   return (

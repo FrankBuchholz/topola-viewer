@@ -276,6 +276,13 @@ export function convertGedcom(
   };
 }
 
+/**
+ * Get NAME from HEAD
+ * 0 HEAD
+ * 1 SOUR Gramps
+ * 2 VERS AIO64-6.0.6--1
+ * 2 NAME Gramps
+ */
 export function getSoftware(head: GedcomEntry): string | null {
   const sour =
     head && head.tree && head.tree.find((entry) => entry.tag === 'SOUR');
@@ -297,11 +304,8 @@ export function getName(person: GedcomEntry): string | undefined {
 }
 
 export function getFileName(fileEntry: GedcomEntry): string | undefined {
-  const fileTitle = fileEntry?.tree.find((entry) => entry.tag === 'TITL')?.data;
-
-  const fileExtension = fileEntry?.tree.find(
-    (entry) => entry.tag === 'FORM',
-  )?.data;
+  const fileTitle     = fileEntry?.tree.find((entry) => entry.tag === 'TITL')?.data;
+  const fileExtension = fileEntry?.tree.find((entry) => entry.tag === 'FORM')?.data;
 
   return fileTitle && fileExtension && fileTitle + '.' + fileExtension;
 }

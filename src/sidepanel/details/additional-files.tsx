@@ -3,7 +3,9 @@ import {List} from 'semantic-ui-react';
 export interface FileEntry {
   url: string;
   filename?: string;
+  form?: string;
   titl?: string;
+  tag?: string;
 }
 
 interface Props {
@@ -25,7 +27,10 @@ export function AdditionalFiles({files}: Props) {
               </a>
             </List.Header>
             <List.Description>
-              {file.titl && <div>{file.titl}</div>} 
+              {file.titl        && <div>{file.titl}</div>} 
+              {/*file.url         && <div>{file.url}</div>*/}
+              {/*file.form        && <div>{file.form}</div>*/}
+              {/*file.tag         && <div>{file.tag}</div>*/}
             </List.Description>
           </List.Content>
         </List.Item>
