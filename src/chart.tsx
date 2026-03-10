@@ -154,12 +154,32 @@ function getStrippedSvg() {
   return svg;
 }
 
+function getSvgDimensions() {
+  const svg = document.getElementById('chartSvg')!;
+  return {
+    width: Number(svg.getAttribute('width')),
+    height: Number(svg.getAttribute('height')),
+  };
+}
+
 function getSvgContents() {
   return new XMLSerializer().serializeToString(getStrippedSvg());
 }
 
 async function getSvgContentsWithInlinedImages() {
   const svg = getStrippedSvg();
+
+  // Set white background because the default background of the SVG
+  // is transparent, which causes issues when printing or exporting to PDF.
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const rect = document.createElementNS(svgNs, 'rect');
+  rect.setAttribute('x', '0');
+  rect.setAttribute('y', '0');
+  rect.setAttribute('width', '100%');
+  rect.setAttribute('height', '100%');
+  rect.setAttribute('fill', 'white');
+  svg.prepend(rect);
+
   await inlineImages(svg);
   return new XMLSerializer().serializeToString(svg);
 }
@@ -205,13 +225,15 @@ export async function downloadPng() {
 export async function downloadPdf() {
   // Lazy load jspdf.
   const {default: jspdf} = await import('jspdf');
-  const canvas = await drawOnCanvas();
+
+  const {width, height} = getSvgDimensions();
   const doc = new jspdf({
-    orientation: canvas.width > canvas.height ? 'l' : 'p',
+    orientation: width > height ? 'l' : 'p',
     unit: 'pt',
-    format: [canvas.width, canvas.height],
+    format: [width, height],
   });
-  doc.addImage(canvas, 'PNG', 0, 0, canvas.width, canvas.height, 'NONE');
+  const contents = await getSvgContentsWithInlinedImages();
+  await doc.addSvgAsImage(contents, 0, 0, width, height);
   doc.save('topola.pdf');
 }
 

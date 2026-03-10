@@ -165,6 +165,11 @@ function fileDetails(objectEntries: GedcomEntry[], gedcom: GedcomData) {
       }
     });
 /* end modification */
+          filename: getFileName(fileEntry),
+          titl: objectEntry.tree.find((entry) => entry.tag === 'TITL')?.data,
+        })
+      }
+    });
 
   if (!files.length) {
     return null;
