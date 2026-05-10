@@ -49,14 +49,30 @@ import {SidePanel} from './sidepanel/side-panel';
 import {analyticsEvent} from './util/analytics';
 import {getI18nMessage} from './util/error_i18n';
 import {idToIndiMap, TopolaData} from './util/gedcom_util';
+import {WebMcpBridge} from './webmcp';
 
 /**
- * Load GEDCOM URL from VITE_STATIC_URL environment variable.
+ * Load GEDCOM URL from environment variable (Vite VITE_STATIC_URL or dynamically
+ * injected via a meta tag from Caddy server).
  *
- * If this environment variable is provided, the viewer is switched to
+ * If this static URL is provided, the viewer is switched to
  * single-tree mode without the option to load other data.
  */
-const staticUrl = import.meta.env.VITE_STATIC_URL;
+function getStaticUrl(): string | undefined {
+  const envUrl = import.meta.env.VITE_STATIC_URL;
+  if (envUrl) return envUrl;
+
+  const metaTag = document.querySelector('meta[name="topola-static-url"]');
+  const metaUrl = metaTag?.getAttribute('content');
+  // Safely ignore if it is empty, the raw caddy template expression, or Vite's raw template placeholder
+  if (metaUrl && !metaUrl.startsWith('__') && !metaUrl.includes('{{ env')) {
+    return metaUrl;
+  }
+
+  return undefined;
+}
+
+const staticUrl = getStaticUrl();
 
 /** Shows an error message in the middle of the screen. */
 function ErrorMessage(props: {message?: string}) {
@@ -150,7 +166,7 @@ function getArguments(location: H.Location<any>): Arguments {
   const hash = getParam('file');
   const url = getParam('url');
   const embedded = getParam('embedded') === 'true'; // False by default.
-  var sourceSpec: DataSourceSpec | undefined = undefined;
+  let sourceSpec: DataSourceSpec | undefined = undefined;
   if (staticUrl) {
     sourceSpec = {
       source: DataSourceEnum.GEDCOM_URL,
@@ -246,6 +262,7 @@ export function App() {
   /** Freeze animations after initial chart render. */
   const [freezeAnimation, setFreezeAnimation] = useState(false);
   const [config, setConfig] = useState(DEFALUT_CONFIG);
+  const [mcpBridge] = useState(() => new WebMcpBridge());
 
   const intl = useIntl();
   const navigate = useNavigate();
@@ -267,9 +284,9 @@ export function App() {
     if (data === undefined) {
       return;
     }
-    let shouldHideIds = config.id === Ids.HIDE;
-    let shouldHideSex = config.sex === Sex.HIDE;
-    let indiMap = idToIndiMap(data.chartData);
+    const shouldHideIds = config.id === Ids.HIDE;
+    const shouldHideSex = config.sex === Sex.HIDE;
+    const indiMap = idToIndiMap(data.chartData);
     indiMap.forEach((indi) => {
       indi.hideId = shouldHideIds;
       indi.hideSex = shouldHideSex;
@@ -437,6 +454,27 @@ export function App() {
     })();
   });
 
+  useEffect(() => {
+    mcpBridge.registerTools();
+    return () => {
+      mcpBridge.unregisterTools();
+    };
+  }, [mcpBridge]);
+
+  useEffect(() => {
+    mcpBridge.setData(data || null);
+  }, [data, mcpBridge]);
+
+  useEffect(() => {
+    mcpBridge.setDetailIndi(detailIndi || null);
+  }, [detailIndi, mcpBridge]);
+
+  useEffect(() => {
+    mcpBridge.setSetSelectionCallback((id: string) => {
+      onSelection({id, generation: 0});
+    });
+  }, [mcpBridge, location]);
+
   function updateUrl(args: queryString.ParsedQuery<any>) {
     const search = queryString.parse(location.search);
     for (const key in args) {
@@ -548,7 +586,7 @@ export function App() {
   function renderMainArea() {
     switch (state) {
       case AppState.SHOWING_CHART:
-      case AppState.LOADING_MORE:
+      case AppState.LOADING_MORE: {
         const updatedSelection = getSelection(data!.chartData, selection);
         return (
           <div id="content">
@@ -577,6 +615,7 @@ export function App() {
             </SidebarPushable>
           </div>
         );
+      }
 
       case AppState.ERROR:
         return <ErrorMessage message={error!} />;
