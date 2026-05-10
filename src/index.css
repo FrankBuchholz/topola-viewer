@@ -182,10 +182,6 @@ div.zoom {
   text-transform: none; /* uppercase; */
 }
 
-.ui.sub.header, .ui.list {
-  margin-left: 20px;
-}
-
 .limit-height {
   height: 300px;
   overflow-y: scroll;
@@ -343,6 +339,14 @@ div.zoom {
   white-space: pre;
 }
 
+@media (max-width: 450px) {
+  /* Hide the title from the top bar when the viewport is too small to display
+     it alongside the search box. */
+  .topbar--title {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   #sidebar {
     background-color: #fff;
@@ -388,5 +392,16 @@ div.zoom {
 
   #content #sidebar.very.thin ~ .pusher {
     width: 100%;
+  }
+
+  /* Push the search box to the right on small screens. */
+  .ui.search {
+    margin-left: auto;
+    margin-right: 1em;
+  }
+
+  .ui.search>.results {
+    left: initial;
+    right: 0;
   }
 }
