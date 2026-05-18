@@ -1,8 +1,8 @@
-import {ModelContext} from '../src/webmcp_types';
+import {ModelContext, WebMcpTool} from '../src/webmcp_types';
 
 declare global {
   interface Window {
-    __registeredTools?: any[];
+    __registeredTools?: WebMcpTool[];
   }
 
   interface Navigator {

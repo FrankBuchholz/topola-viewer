@@ -57,7 +57,7 @@ function getHusbandLastName(
 }
 
 class LunrSearchIndex implements SearchIndex {
-  private index: lunr.Index | undefined;
+  private index!: lunr.Index;
   private indiMap: Map<string, JsonIndi>;
   private famMap: Map<string, JsonFam>;
 
@@ -104,10 +104,9 @@ class LunrSearchIndex implements SearchIndex {
   }
 
   private initMultiLingualLunrWithoutTrimmer(
-    lunrInstance: any,
+    lunrInstance: lunr.Builder,
     languages: string[],
   ): void {
-    let wordCharacters = '';
     const pipelineFunctions: PipelineFunction[] = [];
     const searchPipelineFunctions: PipelineFunction[] = [];
     languages.forEach((language) => {
@@ -115,12 +114,10 @@ class LunrSearchIndex implements SearchIndex {
       // @ts-ignore
       const lunrLanguage = lunr[language];
       if (language === 'en') {
-        wordCharacters += '\\w';
         pipelineFunctions.unshift(lunr.stopWordFilter);
         pipelineFunctions.push(lunr.stemmer);
         searchPipelineFunctions.push(lunr.stemmer);
       } else {
-        wordCharacters += lunrLanguage.wordCharacters;
         if (lunrLanguage.stopWordFilter) {
           pipelineFunctions.unshift(lunrLanguage.stopWordFilter);
         }
@@ -145,13 +142,16 @@ class LunrSearchIndex implements SearchIndex {
       .filter((s) => !!s)
       .map((s) => `${s} ${s}*`)
       .join(' ');
-    const results = this.index!.search(query);
+    const results = this.index.search(query);
     return results
       .sort(compare)
       .slice(0, MAX_RESULTS)
       .map((result) => ({
         id: result.ref,
-        indi: this.indiMap.get(result.ref)!,
+        indi: this.indiMap.get(result.ref) || {
+          id: result.ref,
+          firstName: 'INDI NOT FOUND',
+        },
       }));
   }
 }

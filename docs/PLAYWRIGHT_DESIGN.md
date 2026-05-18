@@ -72,7 +72,7 @@ To establish clear architectural guardrails and prevent future regressions or re
 ### C. Maintaining Physical HTML Wrapper Files for Iframe Tests
 * **Considered:** Storing a physical `tests/fixtures/embedded_frame.html` file in the repository to act as the container for iframe tests.
 * **Rejected because:** Storing a physical, standalone test-only wrapper file can create environment port synchronization issues and static asset mapping overhead.
-* **Actual Implementation Note:** The implementation adopted a hybrid approach. A physical template file [embedded_frame.html](file:///home/pwiech/personal/github/topola-viewer/tests/fixtures/embedded_frame.html) is maintained as the structural source of truth for the frame, but it is loaded in-memory and served virtually on `/test-embedded-frame.html` via the network router, keeping it on the same origin/port dynamically to bypass cross-origin iframe blocks.
+* **Actual Implementation Note:** The implementation adopted a hybrid approach. A physical template file [embedded_frame.html](../tests/fixtures/embedded_frame.html) is maintained as the structural source of truth for the frame, but it is loaded in-memory and served virtually on `/test-embedded-frame.html` via the network router, keeping it on the same origin/port dynamically to bypass cross-origin iframe blocks.
 
 ### D. Retaining `start-server-and-test` for Dev Server Bootstrapping
 * **Considered:** Continuing to rely on `start-server-and-test` or a custom bash script to verify when port `3000` is responsive before running tests.
@@ -131,7 +131,7 @@ This section defines the granular step-by-step instructions and enumerates **eve
 *   **`tests/global.d.ts`**
     *   *Rationale:* Custom global type declaration file for E2E tests to safely declare `__registeredTools` on the `Window` interface without TypeScript compiler warnings. Redundant overrides for `Navigator` are omitted because the test suite inherits it from the application's core WebMCP declarations.
 *   **`tests/helpers.ts`**
-    *   *Rationale:* Shared test utilities to encapsulate wildcard route mocking for family tree fetching (`setupGedcomRoute`) and tracking interception (`blockTracking`). This avoids code duplication across spec files.
+    *   *Rationale:* Shared test utilities to encapsulate wildcard route mocking for family tree fetching (`setupGedcomRoute`) and hermetic context routing (`setupHermeticEnvironment`). This avoids code duplication across spec files.
 *   **`tests/fixtures/embedded_frame.html`**
     *   *Rationale:* Physical template wrapper file defining the iframe and message-passing structure for embedded view E2E verification.
 *   **`src/datasource/testdata/test.ged`**
@@ -174,7 +174,7 @@ This section defines the granular step-by-step instructions and enumerates **eve
      * `"test:e2e:ui": "playwright test --ui"`
 2. Author `playwright.config.ts` to orchestrate the `webServer` dynamically based on execution context, and poll port `3000`.
 
-**Key Configuration Details for [playwright.config.ts](file:///home/pwiech/personal/github/topola-viewer/playwright.config.ts):**
+**Key Configuration Details for [playwright.config.ts](../playwright.config.ts):**
 * **Test Directory**: Target `./tests` folder.
 * **Parallelism & CI Tuning**: Enable fully parallel execution (`fullyParallel: true`), disable `forbidOnly` locally but enforce it in CI, and configure retries (2 in CI, 0 locally).
 * **Base Configuration**: Set the `baseURL` to `http://localhost:3000`, force the locale to `'en-US'` to ensure consistent translation keys across all runs, and capture traces on first retry.
@@ -190,7 +190,7 @@ This section defines the granular step-by-step instructions and enumerates **eve
 3. Author `tests/global.d.ts` to provide TypeScript type definitions for mocked window objects:
    * **Type Extension**: Declares `__registeredTools?` on the global `Window` interface to prevent TypeScript compilation errors during WebMCP mocks.
 4. Author `tests/helpers.ts` to provide reusable mock setups and routing interceptions:
-   * **Tracking Blockers**: Implements a `blockTracking(context)` helper that intercepts and aborts requests targeting Google Analytics and Tag Manager (`**/*google-analytics.com/**`, `**/*googletagmanager.com/**`) to guarantee hermetic and fast test execution.
+   * **Hermetic Routing**: Implements a `setupHermeticEnvironment(context)` helper that intercepts tracking services (`**/*google-analytics.com/**`, `**/*googletagmanager.com/**`) and embeds baseline web fonts to guarantee deterministic and fast test execution.
    * **GEDCOM Mocks**: Implements a `setupGedcomRoute(context)` helper that reads the version-controlled local dataset (`src/datasource/testdata/test.ged`) and routes all requests matching `**/family.ged` to be fulfilled with it, serving a `200 OK` response with CORS enablement headers (`Access-Control-Allow-Origin: *`).
 5. Author the physical template wrapper file `tests/fixtures/embedded_frame.html` for testing embedded iframe communications:
    * **Structure**: Defines a standard wrapper document housing an iframe that points to the app's embedded route: `/#/view?embedded=true&handleCors=false`.
@@ -200,7 +200,7 @@ This section defines the granular step-by-step instructions and enumerates **eve
 
 ##### 1. Intro Test (`tests/intro.spec.ts`)
 Checks the landing page layout, menu items, and basic static DOM presence:
-* **Setup**: Leverages `beforeEach` to block analytics and tracking servers using the `blockTracking` helper, then loads the index page (`/`).
+* **Setup**: Leverages `beforeEach` to configure hermetic routes using the `setupHermeticEnvironment` helper, then loads the index page (`/`).
 * **Assertions**:
   * Verifies that the main intro landing text content (specifically checking for the presence of `'Examples'`) is visible on the page.
   * Asserts that core action buttons in the menu (exact text `'Open file'` and `'Load from URL'`) are properly rendered and visible to the user.
