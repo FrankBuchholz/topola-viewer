@@ -1,6 +1,6 @@
 import {max, min} from 'd3-array';
 import {interpolateNumber} from 'd3-interpolate';
-import {select, Selection} from 'd3-selection';
+import {BaseType, select, Selection} from 'd3-selection';
 import 'd3-transition';
 import {
   D3ZoomEvent,
@@ -69,7 +69,7 @@ function scrolled() {
 function loadAsDataUrl(blob: Blob): Promise<string> {
   const reader = new FileReader();
   reader.readAsDataURL(blob);
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<string>((resolve, _reject) => {
     reader.onload = (e) => resolve((e.target as FileReader).result as string);
   });
 }
@@ -103,7 +103,7 @@ async function inlineImages(svg: Element): Promise<void> {
 function loadImage(blob: Blob): Promise<HTMLImageElement> {
   const image = new Image();
   image.src = URL.createObjectURL(blob);
-  return new Promise<HTMLImageElement>((resolve, reject) => {
+  return new Promise<HTMLImageElement>((resolve, _reject) => {
     image.addEventListener('load', () => resolve(image));
   });
 }
@@ -115,6 +115,7 @@ function drawImageOnCanvas(image: HTMLImageElement) {
   canvas.width = image.width * 2;
   canvas.height = image.height * 2;
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const ctx = canvas.getContext('2d')!;
   const oldFill = ctx.fillStyle;
   ctx.fillStyle = 'white';
@@ -139,6 +140,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string) {
 
 /** Return a copy of the SVG chart but without scaling and positioning. */
 function getStrippedSvg() {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const svg = document.getElementById('chartSvg')!.cloneNode(true) as Element;
 
   svg.removeAttribute('transform');
@@ -149,9 +151,19 @@ function getStrippedSvg() {
     'height',
     String(Number(svg.getAttribute('height')) / scale),
   );
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   svg.querySelector('#chart')!.removeAttribute('transform');
 
   return svg;
+}
+
+function getSvgDimensions() {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const svg = document.getElementById('chartSvg')!;
+  return {
+    width: Number(svg.getAttribute('width')),
+    height: Number(svg.getAttribute('height')),
+  };
 }
 
 function getSvgContents() {
@@ -160,6 +172,18 @@ function getSvgContents() {
 
 async function getSvgContentsWithInlinedImages() {
   const svg = getStrippedSvg();
+
+  // Set white background because the default background of the SVG
+  // is transparent, which causes issues when printing or exporting to PDF.
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const rect = document.createElementNS(svgNs, 'rect');
+  rect.setAttribute('x', '0');
+  rect.setAttribute('y', '0');
+  rect.setAttribute('width', '100%');
+  rect.setAttribute('height', '100%');
+  rect.setAttribute('fill', 'white');
+  svg.prepend(rect);
+
   await inlineImages(svg);
   return new XMLSerializer().serializeToString(svg);
 }
@@ -171,14 +195,14 @@ export function printChart() {
   printWindow.style.top = '-1000px';
   printWindow.style.left = '-1000px';
   printWindow.onload = () => {
-    printWindow.contentDocument!.open();
-    printWindow.contentDocument!.write(getSvgContents());
-    printWindow.contentDocument!.close();
+    printWindow.contentDocument?.open();
+    printWindow.contentDocument?.write(getSvgContents());
+    printWindow.contentDocument?.close();
     // Doesn't work on Firefox without the setTimeout.
     setTimeout(() => {
-      printWindow.contentWindow!.focus();
-      printWindow.contentWindow!.print();
-      printWindow.parentNode!.removeChild(printWindow);
+      printWindow.contentWindow?.focus();
+      printWindow.contentWindow?.print();
+      printWindow.parentNode?.removeChild(printWindow);
     }, 500);
   };
   document.body.appendChild(printWindow);
@@ -205,13 +229,15 @@ export async function downloadPng() {
 export async function downloadPdf() {
   // Lazy load jspdf.
   const {default: jspdf} = await import('jspdf');
-  const canvas = await drawOnCanvas();
+
+  const {width, height} = getSvgDimensions();
   const doc = new jspdf({
-    orientation: canvas.width > canvas.height ? 'l' : 'p',
+    orientation: width > height ? 'l' : 'p',
     unit: 'pt',
-    format: [canvas.width, canvas.height],
+    format: [width, height],
   });
-  doc.addImage(canvas, 'PNG', 0, 0, canvas.width, canvas.height, 'NONE');
+  const contents = await getSvgContentsWithInlinedImages();
+  await doc.addSvgAsImage(contents, 0, 0, width, height);
   doc.save('topola.pdf');
 }
 
@@ -277,6 +303,7 @@ function calculateScaleExtent(
 ): [number, number] {
   const [availWidth, availHeight] = getScrollbarAwareSize(parent);
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const zoomOutFactor = min([
     1,
     scale,
@@ -284,6 +311,7 @@ function calculateScaleExtent(
     availHeight / chartInfo.size[1],
   ])!;
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return [max([0.1, zoomOutFactor])!, 2];
 }
 
@@ -292,6 +320,7 @@ export interface ChartProps {
   selection: IndiInfo;
   chartType: ChartType;
   onSelection: (indiInfo: IndiInfo) => void;
+  onDetailSelection: (indiInfo: IndiInfo) => void;
   freezeAnimation?: boolean;
   colors?: ChartColors;
   hideIds?: Ids;
@@ -306,14 +335,19 @@ class ChartWrapper {
   /** Rendering is required after the current animation finishes. */
   private rerenderRequired = false;
   /** The d3 zoom behavior object. */
-  private zoomBehavior?: ZoomBehavior<Element, any>;
+  private zoomBehavior?: ZoomBehavior<Element, unknown>;
   /** Props that will be used for rerendering. */
   private rerenderProps?: ChartProps;
   private rerenderResetPosition?: boolean;
 
   zoom(factor: number) {
-    const parent = select('#svgContainer') as Selection<Element, any, any, any>;
-    this.zoomBehavior!.scaleBy(parent, factor);
+    const parent = select('#svgContainer') as Selection<
+      Element,
+      unknown,
+      BaseType,
+      unknown
+    >;
+    this.zoomBehavior?.scaleBy(parent, factor);
   }
 
   /**
@@ -342,24 +376,36 @@ class ChartWrapper {
       return;
     }
 
-    if (args.initialRender) {
+    if (args.initialRender || !this.chart) {
       (select('#chart').node() as HTMLElement).innerHTML = '';
       this.chart = createChart({
         json: props.data,
         chartType: getChartType(props.chartType),
         renderer: getRendererType(props.chartType),
         svgSelector: '#chart',
-        indiCallback: (info) => props.onSelection(info),
-        colors: chartColors.get(props.colors!),
-        horizontal: props.orientation === Orientation.HORIZONTAL,
+        indiCallback: (info) => {
+          // ths is called when an individual is selected in the chart
+          if (info.modifiers?.shiftKey) {
+            // If the shift key is pressed, we just update the details tab without changing the selection in the chart.
+            // This allows users to quickly view details of multiple individuals without losing their place in the chart.
+            props.onDetailSelection(info);
+          } else {
+            // If the shift key is not pressed, we update the selection in the chart as usual.
+            props.onSelection(info);
+          }
+        },
+        colors:
+          props.colors !== undefined
+            ? chartColors.get(props.colors)
+            : undefined,
         animate: true,
         updateSvgSize: false,
         locale: intl.locale,
       });
     } else {
-      this.chart!.setData(props.data);
+      this.chart.setData(props.data);
     }
-    const chartInfo = this.chart!.render({
+    const chartInfo = this.chart.render({
       startIndi: props.selection.id,
       baseGeneration: props.selection.generation,
     });
@@ -430,10 +476,16 @@ class ChartWrapper {
         this.rerenderRequired = false;
         // Use `this.rerenderProps` instead of the props in scope because
         // the props may have been updated in the meantime.
-        this.renderChart(this.rerenderProps!, intl, {
-          initialRender: false,
-          resetPosition: !!this.rerenderResetPosition,
-        });
+        if (this.rerenderProps) {
+          this.renderChart(this.rerenderProps, intl, {
+            initialRender: false,
+            resetPosition: !!this.rerenderResetPosition,
+          });
+        } else {
+          console.error(
+            'Rerender required after animation, but rerenderProps was not set.',
+          );
+        }
       }
     });
   }
@@ -455,7 +507,11 @@ export function Chart(props: ChartProps) {
       const resetPosition =
         props.chartType !== prevProps?.chartType ||
         props.data !== prevProps.data ||
-        props.selection !== prevProps.selection;
+        // This does not work as the objects are always different instances.
+        //props.selection !== prevProps.selection;
+        // Therefore, compare id and generation instead.
+        props.selection.id !== prevProps.selection.id ||
+        props.selection.generation !== prevProps.selection.generation;
       chartWrapper.current.renderChart(props, intl, {
         initialRender,
         resetPosition,

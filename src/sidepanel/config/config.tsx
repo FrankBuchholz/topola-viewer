@@ -1,8 +1,8 @@
-import {SourceHead} from '../head/head';
-import {GedcomData} from '../../util/gedcom_util';
 import {ParsedQuery} from 'query-string';
 import {FormattedMessage} from 'react-intl';
 import {Checkbox, Form, Header, Item} from 'semantic-ui-react';
+import {GedcomData} from '../../util/gedcom_util';
+import {SourceHead} from '../head/head';
 
 export enum ChartColors {
   NO_COLOR,
@@ -68,7 +68,7 @@ const ORIENTATION_ARG = new Map<string, Orientation>([
 const ORIENTATION_ARG_INVERSE = new Map<Orientation, string>();
 ORIENTATION_ARG.forEach((v, k) => ORIENTATION_ARG_INVERSE.set(v, k));
 
-export function argsToConfig(args: ParsedQuery<any>): Config {
+export function argsToConfig(args: ParsedQuery<unknown>): Config {
   const getParam = (name: string) => {
     const value = args[name];
     return typeof value === 'string' ? value : undefined;
@@ -82,13 +82,25 @@ export function argsToConfig(args: ParsedQuery<any>): Config {
   };
 }
 
-export function configToArgs(config: Config): ParsedQuery<any> {
-  return {
-    c: COLOR_ARG_INVERSE.get(config.color),
-    i: ID_ARG_INVERSE.get(config.id),
-    s: SEX_ARG_INVERSE.get(config.sex),
-    o: ORIENTATION_ARG_INVERSE.get(config.orientation),
-  };
+export function configToArgs(config: Config): ParsedQuery {
+  const result: ParsedQuery = {};
+  const color = COLOR_ARG_INVERSE.get(config.color);
+  if (color) {
+    result.c = color;
+  }
+  const id = ID_ARG_INVERSE.get(config.id);
+  if (id) {
+    result.i = id;
+  }
+  const sex = SEX_ARG_INVERSE.get(config.sex);
+  if (sex) {
+    result.s = sex;
+  }
+  const orientation = ORIENTATION_ARG_INVERSE.get(config.orientation);
+  if (orientation) {
+    result.o = orientation;
+  }
+  return result;
 }
 
 export function ConfigPanel(props: {
@@ -98,7 +110,8 @@ export function ConfigPanel(props: {
 }) {
   return (
     <>
-    {SourceHead(props.gedcom)}<Form className="details">
+    {SourceHead(props.gedcom)}
+	  <Form className="details">
       <Item.Group>
         <Item>
           <Item.Content>
@@ -138,7 +151,9 @@ export function ConfigPanel(props: {
                 }
                 name="checkboxRadioGroup"
                 value="generation"
-                checked={props.config.color === ChartColors.COLOR_BY_GENERATION}
+                checked={
+				  props.config.color === ChartColors.COLOR_BY_GENERATION
+				}
                 onClick={() =>
                   props.onChange({
                     ...props.config,
@@ -188,7 +203,8 @@ export function ConfigPanel(props: {
                 name="checkboxRadioGroup"
                 value="hide"
                 checked={props.config.id === Ids.HIDE}
-                onClick={() => props.onChange({...props.config, id: Ids.HIDE})}
+                onClick={() => 
+				  props.onChange({...props.config, id: Ids.HIDE})}
               />
             </Form.Field>
             <Form.Field className="no-margin">
@@ -204,7 +220,9 @@ export function ConfigPanel(props: {
                 name="checkboxRadioGroup"
                 value="show"
                 checked={props.config.id === Ids.SHOW}
-                onClick={() => props.onChange({...props.config, id: Ids.SHOW})}
+                onClick={() => 
+				  props.onChange({...props.config, id: Ids.SHOW})
+				}
               />
             </Form.Field>
           </Item.Content>
@@ -227,7 +245,9 @@ export function ConfigPanel(props: {
                 name="checkboxRadioGroup"
                 value="hide"
                 checked={props.config.sex === Sex.HIDE}
-                onClick={() => props.onChange({...props.config, sex: Sex.HIDE})}
+                onClick={() => 
+				  props.onChange({...props.config, sex: Sex.HIDE})
+				}
               />
             </Form.Field>
             <Form.Field className="no-margin">
@@ -243,52 +263,54 @@ export function ConfigPanel(props: {
                 name="checkboxRadioGroup"
                 value="show"
                 checked={props.config.sex === Sex.SHOW}
-                onClick={() => props.onChange({...props.config, sex: Sex.SHOW})}
+                onClick={() => 
+				  props.onChange({...props.config, sex: Sex.SHOW})
+				}
               />
             </Form.Field>
           </Item.Content>
         </Item>
-         <Item>
-          <Item.Content>
-            <Header sub>
-              <FormattedMessage id="config.orientation" defaultMessage="Orientation" />
-            </Header>
-            <Form.Field className="no-margin">
-              <Checkbox
-                radio
-                label={
-                  <FormattedMessage
-                    tagName="label"
-                    id="config.orientation.VERTICAL"
-                    defaultMessage="vertical"
-                  />
-                }
-                name="checkboxRadioGroup"
-                value="vertical"
-                checked={props.config.orientation === Orientation.VERTICAL}
-                onClick={() => props.onChange({...props.config, orientation: Orientation.VERTICAL})}
-              />
-            </Form.Field>
-            <Form.Field className="no-margin">
-              <Checkbox
-                radio
-                label={
-                  <FormattedMessage
-                    tagName="label"
-                    id="config.orientation.HORIZONTAL"
-                    defaultMessage="horizontal"
-                  />
-                }
-                name="checkboxRadioGroup"
-                value="horizontal"
-                checked={props.config.orientation === Orientation.HORIZONTAL}
-                onClick={() => props.onChange({...props.config, orientation: Orientation.HORIZONTAL})}
-              />
-            </Form.Field>
-          </Item.Content>
-        </Item>
-     </Item.Group>
-    </Form>
+          <Item>
+						<Item.Content>
+							<Header sub>
+								<FormattedMessage id="config.orientation" defaultMessage="Orientation" />
+							</Header>
+							<Form.Field className="no-margin">
+								<Checkbox
+									radio
+									label={
+										<FormattedMessage
+											tagName="label"
+											id="config.orientation.VERTICAL"
+											defaultMessage="vertical"
+										/>
+									}
+									name="checkboxRadioGroup"
+									value="vertical"
+									checked={props.config.orientation === Orientation.VERTICAL}
+									onClick={() => props.onChange({...props.config, orientation: Orientation.VERTICAL})}
+								/>
+							</Form.Field>
+							<Form.Field className="no-margin">
+								<Checkbox
+									radio
+									label={
+										<FormattedMessage
+											tagName="label"
+											id="config.orientation.HORIZONTAL"
+											defaultMessage="horizontal"
+										/>
+									}
+									name="checkboxRadioGroup"
+									value="horizontal"
+									checked={props.config.orientation === Orientation.HORIZONTAL}
+									onClick={() => props.onChange({...props.config, orientation: Orientation.HORIZONTAL})}
+								/>
+							</Form.Field>
+            </Item.Content>
+          </Item>
+        </Item.Group>
+      </Form>
     </>
   );
 }

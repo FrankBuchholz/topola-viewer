@@ -30,14 +30,22 @@ export function SidePanel({
         id: 'tab.info',
         defaultMessage: 'Info',
       }),
-      render: () => <Details gedcom={data.gedcom} indi={selectedIndiId} />,
+      render: () => (
+        <Details gedcom={data.gedcom} indi={selectedIndiId} config={config} />
+      ),
     },
     {
       menuItem: intl.formatMessage({
         id: 'tab.settings',
         defaultMessage: 'Settings',
       }),
-      render: () => <ConfigPanel gedcom={data.gedcom} config={config} onChange={onConfigChange} />,
+      render: () => (
+        <ConfigPanel
+          gedcom={data.gedcom}
+          config={config}
+          onChange={onConfigChange}
+        />
+      ),
     },
   ];
 
