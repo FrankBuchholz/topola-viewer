@@ -4,6 +4,7 @@
   "main": "src/index.tsx",
   "dependencies": {
     "@artsy/fresnel": "^6.2.1",
+    "@types/react-linkify": "^1.0.4",
     "array.prototype.flatmap": "^1.2.4",
     "buffer": "^6.0.3",
     "canvas-toBlob": "^1.0.0",
@@ -14,14 +15,14 @@
     "d3-zoom": "^3.0.0",
     "debounce": "^2.2.0",
     "detect-browser": "^5.2.0",
-    "family-chart": "^0.2.1",
+    "family-chart": "^0.9.0",
     "fflate": "^0.8.2",
     "file-saver": "^2.0.5",
     "javascript-natural-sort": "^0.7.1",
     "js-cookie": "^3.0.5",
     "jspdf": "^4.2.1",
     "lunr": "^2.3.9",
-    "lunr-languages": "^1.4.0",
+    "lunr-languages": "^1.20.0",
     "md5": "^2.3.0",
     "original-fs": "^1.2.0",
     "parse-gedcom": "^1.0.5",
@@ -59,7 +60,7 @@
     "@types/history": "^4.7.8",
     "@types/jest": "^26.0.23",
     "@types/js-cookie": "^3.0.6",
-    "@types/lunr": "^2.3.3",
+    "@types/lunr": "^2.3.7",
     "@types/md5": "^2.3.0",
     "@types/node": "^25.6.0",
     "@types/react": "^18.3.12",
@@ -98,7 +99,8 @@
     "test:e2e:ui": "playwright test --project=e2e --ui",
     "test:visual": "playwright test --project=visual",
     "test:visual:update": "playwright test --project=visual --update-snapshots",
-    "test:visual:ui": "playwright test --project=visual --ui"
+    "test:visual:ui": "playwright test --project=visual --ui",
+    "check:all": "prettier --check \"{src,tests}/**/*.{ts,tsx,json}\" && npm run lint && npm run build && npm test && tsc -p tests/tsconfig.json --noEmit && npm run test:e2e && npm run test:visual"
   },
   "homepage": ".",
   "browserslist": [

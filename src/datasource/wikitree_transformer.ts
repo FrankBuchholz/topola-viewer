@@ -1,5 +1,12 @@
 import {IntlShape} from 'react-intl';
-import {DateOrRange, JsonEvent, JsonFam, JsonImage, JsonIndi} from 'topola';
+import {
+  Date,
+  DateOrRange,
+  JsonEvent,
+  JsonFam,
+  JsonImage,
+  JsonIndi,
+} from 'topola';
 import {StringUtils} from 'turbocommons-ts';
 import {Person} from 'wikitree-js';
 import {PRIVATE_ID_PREFIX} from './wikitree_api';
@@ -112,9 +119,9 @@ export function convertFams(people: Person[]): JsonFam[] {
     if (husband) {
       fam.husb = husband;
     }
-    fam.children = Array.from(getSet(children, key)).map(
-      (child) => idToName.get(child)!,
-    );
+    fam.children = Array.from(getSet(children, key))
+      .map((child) => idToName.get(child))
+      .filter((x) => !!x) as string[];
     if (
       value.spouse &&
       ((value.spouse.marriage_date &&
@@ -274,7 +281,7 @@ function parseDate(date: string, dataStatus?: string): DateOrRange | undefined {
   if (!matchedDate) {
     return {date: {text: date}};
   }
-  const parsedDate: any = {};
+  const parsedDate: Date = {};
   if (matchedDate[1] !== '0000') {
     parsedDate.year = ~~matchedDate[1];
   }
