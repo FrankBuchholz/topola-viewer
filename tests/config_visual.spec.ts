@@ -1,9 +1,11 @@
 import {expect, test} from '@playwright/test';
-import {setupGedcomRoute} from './helpers';
+import {setupGedcomRoute, setupHermeticEnvironment} from './helpers';
 
 test.describe('Configurations Integration @visual', () => {
   test.beforeEach(async ({page, context}) => {
+    await setupHermeticEnvironment(context);
     await setupGedcomRoute(context);
+
     await page.goto('/#/view?url=https://example.org/family.ged');
 
     // Wait for the sidebar and the main content container to be visible.
