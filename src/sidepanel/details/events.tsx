@@ -44,51 +44,58 @@ interface EventData {
 
 const BIRTH_EVENT_TAGS = ['BIRT'];
 const INDI_EVENT_TAGS = [
-  'ADOP',
-  'BAPM',
-  'BARM',
-  'BASM',
-  'BLES',
-  'CENS',
-  'CHR',
-  'CHRA',
-  'CONF',
-  'EDUC',
-  'EMIG',
-  'EVEN',
-  'FAMS',
-  'FCOM',
-  'GRAD',
-  'IMMI',
-  'NATU',
-  'ORDN',
-  'OCCU',
-  'PROP',
-  'RESI',
-  'RETI',
-  'WILL',
-  '_DEG',
-  '_ELEC',
-  '_MDCL',
-  '_MILT',
+  'ADOP', // ADOPTION
+  'BAPM', // BAPTISM
+  'BARM', // BAR_MITZVAH
+  'BASM', // BAS_MITZVAH
+  'BLES', // BLESSING
+  'CENS', // CENSUS
+  'CHR',  // CHRISTENING
+  'CHRA', // ADULT_CHRISTENING
+  'CONF', // CONFIRMATION
+  'EDUC', // EDUCATION
+  'EMIG', // EMIGRATION
+  'EVEN', // EVENT
+  'FAMS', // FAMILY_SPOUSE
+  'FCOM', // FIRST_COMMUNION
+  'GRAD', // GRADUATION
+  'IMMI', // IMMIGRATION
+  'NATU', // NATURALIZATION
+  'ORDN', // ORDINANCE
+  'OCCU', // OCCUPATION
+  'PROP', // PROPERTY
+  'RESI', // RESIDENCE
+  'RETI', // RETIREMENT
+  'WILL', // WILL
+  '_DEG', // DEGREE HIGH SCHOOL
+  '_ELEC', // Degree (High School)
+  '_MDCL', // Medical entry
+  '_MILT', // Military Services
 ];
 
 const FAMILY_EVENT_TAGS = [
-  'ANUL',
-  'CENS',
-  'DIV',
-  'DIVF',
-  'ENGA',
-  'EVEN',
-  'MARB',
-  'MARC',
-  'MARL',
-  'MARR',
-  'MARS',
+  'ANUL', // ANNULMENT
+  'DIV',  // DIVORCE
+  'CENS', // CENSUS
+  'DIV',  // DIVORCE
+  'DIVF', // DIVORCE_FILED
+  'ENGA', // ENGAGEMENT
+  'EVEN', // EVENT
+  'MARB', // MARRIAGE_BANN
+  'MARC', // MARRIAGE_CONTRACT
+  'MARL', // MARRIAGE_LICENSE
+  'MARR', // MARRIAGE
+  'MARS', // MARRIAGE_SETTLEMENT
 ];
 const LIFE_EVENT_TAGS = [...INDI_EVENT_TAGS, ...FAMILY_EVENT_TAGS];
-const DEATH_EVENT_TAGS = ['DEAT'];
-const AFTER_DEATH_EVENT_TAGS = ['BURI', 'CREM', 'PROB'];
+const DEATH_EVENT_TAGS = [
+  'DEAT', // DEATH
+];
+const AFTER_DEATH_EVENT_TAGS = [
+  'BURI', // BURIAL
+  'CREM', // CREMATION
+  'PROB', // PROBATE
+];
 const SORTED_EVENT_TYPE_GROUPS = [
   BIRTH_EVENT_TAGS,
   LIFE_EVENT_TAGS,

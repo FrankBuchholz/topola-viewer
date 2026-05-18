@@ -25,7 +25,7 @@ import {
   RelativesChart,
   ChartColors as TopolaChartColors,
 } from 'topola';
-import {ChartColors, Ids, Sex} from './sidepanel/config/config';
+import {ChartColors, Ids, Orientation, Sex} from './sidepanel/config/config';
 import {Media} from './util/media';
 import {usePrevious} from './util/previous-hook';
 
@@ -325,6 +325,7 @@ export interface ChartProps {
   colors?: ChartColors;
   hideIds?: Ids;
   hideSex?: Sex;
+  orientation?: Orientation;
 }
 
 class ChartWrapper {
@@ -384,6 +385,7 @@ class ChartWrapper {
         svgSelector: '#chart',
         indiCallback: (info) => {
           // ths is called when an individual is selected in the chart
+          console.log('indiCallback: Selected individual', info, 'props', props);
           if (info.modifiers?.shiftKey) {
             // If the shift key is pressed, we just update the details tab without changing the selection in the chart.
             // This allows users to quickly view details of multiple individuals without losing their place in the chart.
@@ -397,6 +399,27 @@ class ChartWrapper {
           props.colors !== undefined
             ? chartColors.get(props.colors)
             : undefined,
+        // begin addition
+        // see node_modules\topola\dist\detailled-renderer.js
+        // function renderIndi line 273
+        /* Object literal may only specify known properties, and 'famHrefFunc' does not exist in type 'SimpleChartOptions', see node_modules\topola\dist\simple-api.dts
+        indiHrefFunc: (id) => {
+            console.log('indiHrefFunc: Selected id', id);
+        },
+        */
+        // see node_modules\topola\dist\detailled-renderer.js
+        // function renderFamily line 348
+        /* Object literal may only specify known properties, and 'famHrefFunc' does not exist in type 'SimpleChartOptions', see node_modules\topola\dist\simple-api.dts
+        famHrefFunc: (id) => { // This is called when a family is selected in the chart. The id is the family id, which is not used in the current implementation but can be useful for future features.
+            console.log('famHrefFunc: Selected id', id);
+        },
+        */      
+        famCallback: (info) => { 
+            console.log('famCallback: Selected family', info, 'props', props);
+            //props.onSelection(info) 
+        },
+        // end addition
+        horizontal: props.orientation === Orientation.HORIZONTAL, // Render the chart horizontally.
         animate: true,
         updateSvgSize: false,
         locale: intl.locale,
@@ -501,7 +524,8 @@ export function Chart(props: ChartProps) {
         props.chartType !== prevProps?.chartType ||
         props.colors !== prevProps?.colors ||
         props.hideIds !== prevProps?.hideIds ||
-        props.hideSex !== prevProps?.hideSex;
+        props.hideSex !== prevProps?.hideSex ||
+        props.orientation !== prevProps.orientation;
       const resetPosition =
         props.chartType !== prevProps?.chartType ||
         props.data !== prevProps.data ||
@@ -510,6 +534,12 @@ export function Chart(props: ChartProps) {
         // Therefore, compare id and generation instead.
         props.selection.id !== prevProps.selection.id ||
         props.selection.generation !== prevProps.selection.generation;
+      console.log('Chart useEffect:', 
+        'props', props, 
+        'prevProps', prevProps, 
+        'initialRender', initialRender, 
+        'resetPosition', resetPosition
+      ); 
       chartWrapper.current.renderChart(props, intl, {
         initialRender,
         resetPosition,

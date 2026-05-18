@@ -232,6 +232,7 @@ function getArguments(location: H.Location<UploadLocationState>): Arguments {
 }
 
 export function App() {
+  console.log('function App');
   /** State of the application. */
   const [state, setState] = useState<AppState>(AppState.INITIAL);
   /** Loaded data. */
@@ -268,7 +269,8 @@ export function App() {
 
   /** Sets the state with a new individual selection and chart type. */
   function updateDisplay(newSelection: IndiInfo) {
-    if (
+     console.log('function updateDisplay', 'newSelection', newSelection);
+   if (
       !selection ||
       selection.id !== newSelection.id ||
       selection.generation !== newSelection.generation
@@ -279,6 +281,7 @@ export function App() {
   }
 
   function updateChartWithConfig(config: Config, data: TopolaData | undefined) {
+    console.log('function updateChartWithConfig', 'config', config);
     if (data === undefined) {
       return;
     }
@@ -349,6 +352,7 @@ export function App() {
   }
 
   function loadData(newSourceSpec: DataSourceSpec, newSelection?: IndiInfo) {
+    console.log('function loadData', 'newSourceSpec', newSourceSpec, 'newSelection', newSelection);
     switch (newSourceSpec.source) {
       case DataSourceEnum.UPLOADED:
         return uploadedDataSource.loadData({
@@ -375,6 +379,7 @@ export function App() {
 
   useEffect(() => {
     (async () => {
+      console.log('function useEffect', 'location.pathname', location.pathname);
       if (location.pathname !== '/view') {
         if (state !== AppState.INITIAL) {
           setState(AppState.INITIAL);
@@ -426,6 +431,7 @@ export function App() {
         setState(
           loadMoreFromWikitree ? AppState.LOADING_MORE : AppState.SHOWING_CHART,
         );
+        console.log('Updating selection to', args.selection, 'with data', data);
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         updateDisplay(getSelection(data!.chartData, args.selection));
         if (loadMoreFromWikitree) {
@@ -477,6 +483,7 @@ export function App() {
   }, [mcpBridge, location]);
 
   function updateUrl(args: queryString.ParsedQuery<string>) {
+    console.log('function updateUrl', 'args', args);
     const search = queryString.parse(location.search);
     for (const key in args) {
       search[key] = args[key];
@@ -490,6 +497,7 @@ export function App() {
    * Updates the browser URL.
    */
   function onSelection(selection: IndiInfo) {
+    console.log('function onSelection', 'selection', selection);
     // Don't allow selecting WikiTree private profiles.
     if (selection.id.startsWith(PRIVATE_ID_PREFIX)) {
       return;
@@ -505,6 +513,7 @@ export function App() {
    * Shows the individual in the details pane.
    */
   function onDetailSelection(selection: IndiInfo) {
+    console.log('function onDetailSelection', 'selection', selection);
     setDetailIndi(selection.id);
   }
 
@@ -563,12 +572,14 @@ export function App() {
     if (!data) {
       return null;
     }
+    console.log('function renderChart', 'selection', selection);
     if (chartType === ChartType.Donatso) {
       return (
         <DonatsoChart
           data={data.chartData}
           selection={selection}
           onSelection={onSelection}
+          onDetailSelection={onDetailSelection}
         />
       );
     }
@@ -583,11 +594,13 @@ export function App() {
         colors={config.color}
         hideIds={config.id}
         hideSex={config.sex}
+        orientation={config.orientation}
       />
     );
   }
 
   function renderMainArea() {
+    console.log('function renderMainArea', 'state', state, 'selection', selection);
     switch (state) {
       case AppState.SHOWING_CHART:
       case AppState.LOADING_MORE: {

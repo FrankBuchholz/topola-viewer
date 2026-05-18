@@ -62,8 +62,9 @@ async function loadGedzip(
         gedcom = strFromU8(unzipped[fileName]);
       }
     } else {
-      // Save image for later.
-      images.set(fileName, URL.createObjectURL(new Blob([unzipped[fileName]])));
+      // Save image for later. (correction see https://github.com/microsoft/TypeScript/issues/62546)
+      const imageBuffer = new Uint8Array(unzipped[fileName]);
+      images.set(fileName, URL.createObjectURL(new Blob([imageBuffer])));
     }
   }
   if (!gedcom) {

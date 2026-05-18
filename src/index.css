@@ -151,7 +151,7 @@ div.zoom {
 }
 
 .details .ui.items .item .content {
-  padding: 0 15px 0 25px;
+  padding: 0 15px 0 15px; /* was 0 15px 0 25px */
 }
 
 .details .item-header {
@@ -161,7 +161,7 @@ div.zoom {
 }
 
 .details .item-header .header {
-  text-transform: uppercase;
+  text-transform: none; /* uppercase; */
   margin: 0 0 8px 0;
   min-width: 40%;
 }
@@ -175,7 +175,19 @@ div.zoom {
 }
 
 .ui.tabular.menu a {
-  text-transform: uppercase;
+  text-transform: none; /* uppercase; */
+}
+
+.ui.sub.header {
+  text-transform: none; /* uppercase; */
+}
+
+.ui.sub.header {
+  margin-left: 20px;
+}
+
+.ui.list {
+  margin-left: 0px; /* was 20px */
 }
 
 .limit-height {

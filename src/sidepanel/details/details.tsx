@@ -337,48 +337,54 @@ interface Props {
 }
 
 export function Details(props: Props) {
-  const entries = props.gedcom.indis[props.indi].tree;
+  console.log('Details component props.indi', props.indi);
+  const gedcom = props.gedcom;
+  const indi = props.indi;
+  const entries = gedcom.indis[indi].tree;
 
   return (
     <div className="details">
       <Item.Group divided>
         {getSectionForEachMatchingEntry(
           entries,
-          props.gedcom,
+          gedcom,
           ['NAME'],
           nameDetails,
         )}
         {getSectionForEachMatchingEntry(
           entries,
-          props.gedcom,
+          gedcom,
           ['OBJE'],
           imageDetails,
         )}
-        <ImmediateFamily gedcom={props.gedcom} indi={props.indi} />
-        <Events gedcom={props.gedcom} entries={entries} indi={props.indi} />
-        {props.config.id === Ids.SHOW ? getSectionForId(props.indi) : null}
+        <ImmediateFamily gedcom={gedcom} indi={indi} />
+        <Events gedcom={gedcom} entries={entries} indi={indi} />
+        {props.config.id === Ids.SHOW ? getSectionForId(indi) : null}
         {getSectionForEachMatchingEntry(
           entries,
-          props.gedcom,
+          gedcom,
           ['FACT'],
           attributeDetails,
         )}
-        {getOtherSections(entries, props.gedcom)}
+        {getOtherSections(
+          entries, 
+          gedcom
+        )}
         {getSectionForEachMatchingEntry(
           entries,
-          props.gedcom,
+          gedcom,
           ['NOTE'],
           noteDetails,
         )}
         {combineAllMatchingEntriesIntoSingleSection(
           entries,
-          props.gedcom,
+          gedcom,
           ['OBJE'],
           fileDetails,
         )}
         {combineAllMatchingEntriesIntoSingleSection(
           entries,
-          props.gedcom,
+          gedcom,
           ['SOUR'],
           sourceDetails,
         )}

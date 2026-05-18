@@ -17,6 +17,7 @@ export interface DonatsoChartProps {
   data: JsonGedcomData;
   selection: IndiInfo;
   onSelection: (indiInfo: IndiInfo) => void;
+  onDetailSelection: (indiInfo: IndiInfo) => void;
 }
 
 function getOtherSpouse(fam: JsonFam, indi: string) {
@@ -61,6 +62,7 @@ class ChartWrapper {
   private store!: Store;
 
   initializeChart(props: DonatsoChartProps, intl: IntlShape) {
+    console.log('ChartWrapper - initializeChart','props', props);
     const data = convertData(props.data, intl);
     this.store = createStore({
       data,
@@ -78,8 +80,15 @@ class ChartWrapper {
       ] as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       mini_tree: true,
       link_break: false,
-      onCardClick: (e: MouseEvent, d: TreeDatum) =>
-        props.onSelection({id: d.data.id, generation: 0}),
+      onCardClick: (e: MouseEvent, d: TreeDatum) => {
+        if (e.shiftKey) {
+          // If the shift key is pressed, we just update the details tab without changing the selection in the chart. 
+          // This allows users to quickly view details of multiple individuals without losing their place in the chart.
+          props.onDetailSelection({id: d.data.id, generation: 0});
+        } else {
+          // If the shift key is not pressed, we update the selection in the chart as usual.
+          props.onSelection({id: d.data.id, generation: 0});
+			}},
       card_dim: {
         w: 220,
         h: 70,
@@ -89,7 +98,7 @@ class ChartWrapper {
         img_h: 60,
         img_x: 5,
         img_y: 5,
-      },
+			},
     });
     this.store.setOnUpdate((props: unknown) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -99,6 +108,7 @@ class ChartWrapper {
   }
 
   updateChart(props: DonatsoChartProps, intl: IntlShape) {
+    console.log('ChartWrapper - updateChart','props', props);
     const data = convertData(props.data, intl);
     this.store.updateData(data);
     this.store.updateMainId(props.selection.id);
@@ -107,11 +117,13 @@ class ChartWrapper {
 }
 
 export function DonatsoChart(props: DonatsoChartProps) {
+  console.log('function DonatsoChart','props', props);
   const chartWrapper = useRef(new ChartWrapper());
   const prevProps = usePrevious(props);
   const intl = useIntl();
 
   useEffect(() => {
+    console.log('function DonatsoChart - useEffect','props', props);
     if (!prevProps) {
       chartWrapper.current.initializeChart(props, intl);
     } else {
