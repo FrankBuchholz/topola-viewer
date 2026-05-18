@@ -1,8 +1,9 @@
 import {expect, test} from '@playwright/test';
-import {setupGedcomRoute} from './helpers';
+import {setupGedcomRoute, setupHermeticEnvironment} from './helpers';
 
 test.describe('Core SVG Canvas Layouts @visual', () => {
-  test.beforeEach(async ({page, context}) => {
+  test.beforeEach(async ({context}) => {
+    await setupHermeticEnvironment(context);
     await setupGedcomRoute(context);
   });
 
