@@ -1,672 +1,111 @@
-import * as H from 'history';
 import queryString from 'query-string';
-import {useEffect, useState} from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
-import {Navigate, Route, Routes, useLocation, useNavigate} from 'react-router';
+import {useMemo} from 'react';
+import {Navigate, Route, Routes, useLocation} from 'react-router';
 import {
-  Loader,
-  Message,
-  Portal,
-  SidebarPushable,
-  SidebarPusher,
-} from 'semantic-ui-react';
-import {IndiInfo} from 'topola';
+  GOOGLE_DRIVE_REDIRECT_KEYS,
+  handleGoogleDriveRedirect,
+} from './datasource/google_drive';
 import {
-  Chart,
-  ChartType,
-  downloadPdf,
-  downloadPng,
-  downloadSvg,
-  printChart,
-} from './chart';
-import {DataSourceEnum, SourceSelection} from './datasource/data_source';
-import {EmbeddedDataSource, EmbeddedSourceSpec} from './datasource/embedded';
-import {
-  GedcomUrlDataSource,
-  getSelection,
-  UploadedDataSource,
-  UploadLocationState,
-  UploadSourceSpec,
-  UrlSourceSpec,
-} from './datasource/load_data';
-import {
-  loadWikiTree,
-  PRIVATE_ID_PREFIX,
-  WikiTreeDataSource,
-  WikiTreeSourceSpec,
+  handleWikiTreeRedirect,
+  WIKITREE_REDIRECT_KEYS,
 } from './datasource/wikitree';
-import {DonatsoChart} from './donatso-chart';
-import {Intro} from './intro';
-import {TopBar} from './menu/top_bar';
-import {
-  argsToConfig,
-  Config,
-  configToArgs,
-  DEFALUT_CONFIG,
-  Ids,
-  Sex,
-} from './sidepanel/config/config';
-import {SidePanel} from './sidepanel/side-panel';
-import {analyticsEvent} from './util/analytics';
-import {getI18nMessage} from './util/error_i18n';
-import {idToIndiMap, TopolaData} from './util/gedcom_util';
-import {WebMcpBridge} from './webmcp';
-
-/**
- * Load GEDCOM URL from environment variable (Vite VITE_STATIC_URL or dynamically
- * injected via a meta tag from Caddy server).
- *
- * If this static URL is provided, the viewer is switched to
- * single-tree mode without the option to load other data.
- */
-function getStaticUrl(): string | undefined {
-  const envUrl = import.meta.env.VITE_STATIC_URL;
-  if (envUrl) return envUrl;
-
-  const metaTag = document.querySelector('meta[name="topola-static-url"]');
-  const metaUrl = metaTag?.getAttribute('content');
-  // Safely ignore if it is empty, the raw caddy template expression, or Vite's raw template placeholder
-  if (metaUrl && !metaUrl.startsWith('__') && !metaUrl.includes('{{ env')) {
-    return metaUrl;
-  }
-
-  return undefined;
-}
+import {IntroPage} from './pages/intro_page';
+import {ViewPage} from './pages/view_page';
+import {getStaticUrl} from './util/url_args';
 
 const staticUrl = getStaticUrl();
 
-/** Shows an error message in the middle of the screen. */
-function ErrorMessage(props: {message?: string}) {
-  return (
-    <Message negative className="error">
-      <Message.Header>
-        <FormattedMessage
-          id="error.failed_to_load_file"
-          defaultMessage={'Failed to load file'}
-        />
-      </Message.Header>
-      <p>{props.message}</p>
-    </Message>
-  );
-}
-
-interface ErrorPopupProps {
-  message?: string;
-  open: boolean;
-  onDismiss: () => void;
-}
-
 /**
- * Shows a dismissable error message in the bottom left corner of the screen.
+ * Root App component that orchestrates top-level routing, Google Drive "Open with"
+ * payload interception, and WikiTree auth code redirection.
  */
-function ErrorPopup(props: ErrorPopupProps) {
-  return (
-    <Portal open={props.open} onClose={props.onDismiss}>
-      <Message negative className="errorPopup" onDismiss={props.onDismiss}>
-        <Message.Header>
-          <FormattedMessage id="error.error" defaultMessage={'Error'} />
-        </Message.Header>
-        <p>{props.message}</p>
-      </Message>
-    </Portal>
-  );
-}
-
-enum AppState {
-  INITIAL,
-  LOADING,
-  ERROR,
-  SHOWING_CHART,
-  LOADING_MORE,
-}
-
-type DataSourceSpec =
-  | UrlSourceSpec
-  | UploadSourceSpec
-  | WikiTreeSourceSpec
-  | EmbeddedSourceSpec;
-
-/**
- * Arguments passed to the application, primarily through URL parameters.
- * Non-optional arguments get populated with default values.
- */
-interface Arguments {
-  sourceSpec?: DataSourceSpec;
-  selection?: IndiInfo;
-  chartType: ChartType;
-  standalone: boolean;
-  showWikiTreeMenus: boolean;
-  freezeAnimation: boolean;
-  showSidePanel: boolean;
-  config: Config;
-}
-
-function getParamFromSearch(name: string, search: queryString.ParsedQuery) {
-  const value = search[name];
-  return typeof value === 'string' ? value : undefined;
-}
-
-/**
- * Retrieve arguments passed into the application through the URL and uploaded
- * data.
- */
-function getArguments(location: H.Location<UploadLocationState>): Arguments {
-  const search = queryString.parse(location.search);
-  const getParam = (name: string) => getParamFromSearch(name, search);
-
-  const view = getParam('view');
-  const chartTypes = new Map<string | undefined, ChartType>([
-    ['relatives', ChartType.Relatives],
-    ['fancy', ChartType.Fancy],
-    ['donatso', ChartType.Donatso],
-  ]);
-
-  const hash = getParam('file');
-  const url = getParam('url');
-  const embedded = getParam('embedded') === 'true'; // False by default.
-  let sourceSpec: DataSourceSpec | undefined = undefined;
-  if (staticUrl) {
-    sourceSpec = {
-      source: DataSourceEnum.GEDCOM_URL,
-      url: staticUrl,
-      handleCors: false,
-    };
-  } else if (getParam('source') === 'wikitree') {
-    const windowSearch = queryString.parse(window.location.search);
-    sourceSpec = {
-      source: DataSourceEnum.WIKITREE,
-      authcode:
-        getParam('authcode') || getParamFromSearch('authcode', windowSearch),
-    };
-  } else if (hash) {
-    sourceSpec = {
-      source: DataSourceEnum.UPLOADED,
-      hash,
-      gedcom: location.state && location.state.data,
-      images: location.state && location.state.images,
-    };
-  } else if (url) {
-    sourceSpec = {
-      source: DataSourceEnum.GEDCOM_URL,
-      url,
-      handleCors: getParam('handleCors') !== 'false', // True by default.
-    };
-  } else if (embedded) {
-    sourceSpec = {source: DataSourceEnum.EMBEDDED};
-  }
-
-  const indi = getParam('indi');
-  const parsedGen = Number(getParam('gen'));
-  const selection = indi
-    ? {id: indi, generation: !isNaN(parsedGen) ? parsedGen : 0}
-    : undefined;
-
-  /**
-   * Determines whether the side panel should be shown taking into account the
-   * URL parameter and the viewport size.
-   *
-   * On mobile devices (max-width: 767px), the side panel is hidden by default.
-   * On tablet and desktop, the side panel is shown by default.
-   */
-  function getShowSidePanel() {
-    if (window.matchMedia('(max-width: 767px)').matches) {
-      // On mobile, hide the side panel by default.
-      return getParam('sidePanel') === 'true';
-    }
-    // On tablet and desktop, show the side panel by default.
-    return getParam('sidePanel') !== 'false';
-  }
-
-  return {
-    sourceSpec,
-    selection,
-    // Hourglass is the default view.
-    chartType: chartTypes.get(view) || ChartType.Hourglass,
-
-    showSidePanel: getShowSidePanel(),
-    standalone: getParam('standalone') !== 'false' && !embedded && !staticUrl,
-    showWikiTreeMenus: getParam('showWikiTreeMenus') !== 'false', // True by default.
-    freezeAnimation: getParam('freeze') === 'true', // False by default
-    config: argsToConfig(search),
-  };
-}
-
 export function App() {
-  /** State of the application. */
-  const [state, setState] = useState<AppState>(AppState.INITIAL);
-  /** Loaded data. */
-  const [data, setData] = useState<TopolaData>();
-  /** Selected individual. */
-  const [selection, setSelection] = useState<IndiInfo>();
-  /** Selected individual which should be displayed in the details pane. */
-  const [detailIndi, setDetailIndi] = useState<string>();
-  /** Error to display. */
-  const [error, setError] = useState<string>();
-  /** Whether the side panel is shown. */
-  const [showSidePanel, setShowSidePanel] = useState(false);
-  /** Whether the app is in standalone mode, i.e. showing 'open file' menus. */
-  const [standalone, setStandalone] = useState(true);
-  /**
-   * Whether the app should display WikiTree-specific menus when showing data
-   * from WikiTree.
-   */
-  const [showWikiTreeMenus, setShowWikiTreeMenus] = useState(true);
-  /** Type of displayed chart. */
-  const [chartType, setChartType] = useState<ChartType>(ChartType.Hourglass);
-  /** Whether to show the error popup. */
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  /** Specification of the source of the data. */
-  const [sourceSpec, setSourceSpec] = useState<DataSourceSpec>();
-  /** Freeze animations after initial chart render. */
-  const [freezeAnimation, setFreezeAnimation] = useState(false);
-  const [config, setConfig] = useState(DEFALUT_CONFIG);
-  const [mcpBridge] = useState(() => new WebMcpBridge());
-
-  const intl = useIntl();
-  const navigate = useNavigate();
   const location = useLocation();
 
-  /** Sets the state with a new individual selection and chart type. */
-  function updateDisplay(newSelection: IndiInfo) {
-    if (
-      !selection ||
-      selection.id !== newSelection.id ||
-      selection.generation !== newSelection.generation
-    ) {
-      setSelection(newSelection);
-      setDetailIndi(newSelection.id);
-    }
-  }
-
-  function updateChartWithConfig(config: Config, data: TopolaData | undefined) {
-    if (data === undefined) {
-      return;
-    }
-    const shouldHideIds = config.id === Ids.HIDE;
-    const shouldHideSex = config.sex === Sex.HIDE;
-    const indiMap = idToIndiMap(data.chartData);
-    indiMap.forEach((indi) => {
-      indi.hideId = shouldHideIds;
-      indi.hideSex = shouldHideSex;
-    });
-  }
-
-  function onToggleSidePanel() {
-    const newShowSidePanel = !showSidePanel;
-    setShowSidePanel(newShowSidePanel);
-    updateUrl({
-      sidePanel: newShowSidePanel ? 'true' : 'false',
-    });
-  }
-
-  /** Sets error message after data load failure. */
-  function setErrorMessage(message: string) {
-    setError(message);
-    setState(AppState.ERROR);
-  }
-
-  const uploadedDataSource = new UploadedDataSource();
-  const gedcomUrlDataSource = new GedcomUrlDataSource();
-  const wikiTreeDataSource = new WikiTreeDataSource(intl);
-  const embeddedDataSource = new EmbeddedDataSource();
-
-  function isNewData(newSourceSpec: DataSourceSpec, newSelection?: IndiInfo) {
-    if (!sourceSpec || sourceSpec.source !== newSourceSpec.source) {
-      // New data source means new data.
-      return true;
-    }
-    const newSource = {spec: newSourceSpec, selection: newSelection};
-    const oldSouce = {
-      spec: sourceSpec,
-      selection: selection,
-    };
-    switch (newSource.spec.source) {
-      case DataSourceEnum.UPLOADED:
-        return uploadedDataSource.isNewData(
-          newSource as SourceSelection<UploadSourceSpec>,
-          oldSouce as SourceSelection<UploadSourceSpec>,
-          data,
-        );
-      case DataSourceEnum.GEDCOM_URL:
-        return gedcomUrlDataSource.isNewData(
-          newSource as SourceSelection<UrlSourceSpec>,
-          oldSouce as SourceSelection<UrlSourceSpec>,
-          data,
-        );
-      case DataSourceEnum.WIKITREE:
-        return wikiTreeDataSource.isNewData(
-          newSource as SourceSelection<WikiTreeSourceSpec>,
-          oldSouce as SourceSelection<WikiTreeSourceSpec>,
-          data,
-        );
-      case DataSourceEnum.EMBEDDED:
-        return embeddedDataSource.isNewData(
-          newSource as SourceSelection<EmbeddedSourceSpec>,
-          oldSouce as SourceSelection<EmbeddedSourceSpec>,
-          data,
-        );
-    }
-  }
-
-  function loadData(newSourceSpec: DataSourceSpec, newSelection?: IndiInfo) {
-    switch (newSourceSpec.source) {
-      case DataSourceEnum.UPLOADED:
-        return uploadedDataSource.loadData({
-          spec: newSourceSpec,
-          selection: newSelection,
-        });
-      case DataSourceEnum.GEDCOM_URL:
-        return gedcomUrlDataSource.loadData({
-          spec: newSourceSpec,
-          selection: newSelection,
-        });
-      case DataSourceEnum.WIKITREE:
-        return wikiTreeDataSource.loadData({
-          spec: newSourceSpec,
-          selection: newSelection,
-        });
-      case DataSourceEnum.EMBEDDED:
-        return embeddedDataSource.loadData({
-          spec: newSourceSpec,
-          selection: newSelection,
-        });
-    }
-  }
-
-  useEffect(() => {
-    (async () => {
-      if (location.pathname !== '/view') {
-        if (state !== AppState.INITIAL) {
-          setState(AppState.INITIAL);
-        }
-        return;
-      }
-
-      const args = getArguments(location);
-
-      if (!args.sourceSpec) {
-        navigate({pathname: '/'}, {replace: true});
-        return;
-      }
-
-      if (
-        state === AppState.INITIAL ||
-        isNewData(args.sourceSpec, args.selection)
-      ) {
-        // Set loading state.
-        setState(AppState.LOADING);
-        // Set state from URL parameters.
-        setSourceSpec(args.sourceSpec);
-        setSelection(args.selection);
-        setDetailIndi(args.selection?.id);
-        setStandalone(args.standalone);
-        setShowWikiTreeMenus(args.showWikiTreeMenus);
-        setChartType(args.chartType);
-        setFreezeAnimation(args.freezeAnimation);
-        setConfig(args.config);
-        try {
-          const data = await loadData(args.sourceSpec, args.selection);
-          // Set state with data.
-          setData(data);
-          updateChartWithConfig(args.config, data);
-          setShowSidePanel(args.showSidePanel);
-          setState(AppState.SHOWING_CHART);
-        } catch (error: unknown) {
-          setErrorMessage(getI18nMessage(error as Error, intl));
-        }
-      } else if (
-        state === AppState.SHOWING_CHART ||
-        state === AppState.LOADING_MORE
-      ) {
-        // Update selection if it has changed in the URL.
-        const loadMoreFromWikitree =
-          args.sourceSpec.source === DataSourceEnum.WIKITREE &&
-          (!selection || selection.id !== args.selection?.id);
-        setChartType(args.chartType);
-        setState(
-          loadMoreFromWikitree ? AppState.LOADING_MORE : AppState.SHOWING_CHART,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        updateDisplay(getSelection(data!.chartData, args.selection));
-        if (loadMoreFromWikitree) {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const data = await loadWikiTree(args.selection!.id, intl);
-            const newSelection = getSelection(data.chartData, args.selection);
-            setData(data);
-            setSelection(newSelection);
-            setDetailIndi(newSelection.id);
-            setState(AppState.SHOWING_CHART);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (error: any) {
-            setState(AppState.SHOWING_CHART);
-            displayErrorPopup(
-              intl.formatMessage(
-                {
-                  id: 'error.failed_wikitree_load_more',
-                  defaultMessage: 'Failed to load data from WikiTree. {error}',
-                },
-                {error},
-              ),
-            );
-          }
-        }
-      }
-    })();
-  });
-
-  useEffect(() => {
-    mcpBridge.registerTools();
-    return () => {
-      mcpBridge.unregisterTools();
-    };
-  }, [mcpBridge]);
-
-  useEffect(() => {
-    mcpBridge.setData(data || null);
-  }, [data, mcpBridge]);
-
-  useEffect(() => {
-    mcpBridge.setDetailIndi(detailIndi || null);
-  }, [detailIndi, mcpBridge]);
-
-  useEffect(() => {
-    mcpBridge.setSetSelectionCallback((id: string) => {
-      onSelection({id, generation: 0});
-    });
-  }, [mcpBridge, location]);
-
-  function updateUrl(args: queryString.ParsedQuery<string>) {
-    const search = queryString.parse(location.search);
-    for (const key in args) {
-      search[key] = args[key];
-    }
-    location.search = queryString.stringify(search);
-    navigate(location);
-  }
-
-  /**
-   * Called when the user clicks an individual box in the chart.
-   * Updates the browser URL.
-   */
-  function onSelection(selection: IndiInfo) {
-    // Don't allow selecting WikiTree private profiles.
-    if (selection.id.startsWith(PRIVATE_ID_PREFIX)) {
-      return;
-    }
-    analyticsEvent('selection_changed');
-    updateUrl({
-      indi: selection.id,
-      gen: String(selection.generation),
-    });
-  }
-  /**
-   * Called when the user shift+clicks an individual box in the chart.
-   * Shows the individual in the details pane.
-   */
-  function onDetailSelection(selection: IndiInfo) {
-    setDetailIndi(selection.id);
-  }
-
-  function onPrint() {
-    analyticsEvent('print');
-    printChart();
-  }
-
-  function displayErrorPopup(message: string) {
-    setShowErrorPopup(true);
-    setError(message);
-  }
-
-  async function onDownloadPdf() {
-    analyticsEvent('download_pdf');
-    try {
-      await downloadPdf();
-    } catch (e) {
-      displayErrorPopup(
-        intl.formatMessage({
-          id: 'error.failed_pdf',
-          defaultMessage:
-            'Failed to generate PDF file.' +
-            ' Please try with a smaller diagram or download an SVG file.',
-        }),
-      );
-    }
-  }
-
-  async function onDownloadPng() {
-    analyticsEvent('download_png');
-    try {
-      await downloadPng();
-    } catch (e) {
-      displayErrorPopup(
-        intl.formatMessage({
-          id: 'error.failed_png',
-          defaultMessage:
-            'Failed to generate PNG file.' +
-            ' Please try with a smaller diagram or download an SVG file.',
-        }),
-      );
-    }
-  }
-
-  function onDownloadSvg() {
-    analyticsEvent('download_svg');
-    downloadSvg();
-  }
-
-  function onDismissErrorPopup() {
-    setShowErrorPopup(false);
-  }
-
-  function renderChart(selection: IndiInfo) {
-    if (!data) {
+  // Synchronously parse and evaluate redirect query parameters from both external window and router searches.
+  const redirectTarget = useMemo(() => {
+    if (typeof window === 'undefined') {
       return null;
     }
-    if (chartType === ChartType.Donatso) {
-      return (
-        <DonatsoChart
-          data={data.chartData}
-          selection={selection}
-          onSelection={onSelection}
-        />
-      );
+
+    const windowSearch = queryString.parse(window.location.search);
+    const routerSearch = queryString.parse(location.search);
+
+    let redirectPath: string | null = null;
+    const mergedParams = {...routerSearch, ...windowSearch};
+    let paramsModified = false;
+
+    // 1. Handle Google Drive "Open with" action
+    const gdResult = handleGoogleDriveRedirect(mergedParams);
+    if (gdResult) {
+      redirectPath = gdResult.redirectPath;
+      mergedParams.source = 'google-drive';
+      mergedParams.fileId = gdResult.fileId;
+      delete mergedParams.state;
+      paramsModified = true;
     }
+
+    // 2. Handle WikiTree authcode presence
+    const wtResult = handleWikiTreeRedirect(windowSearch, location.pathname);
+    if (wtResult) {
+      redirectPath = redirectPath || wtResult.redirectPath;
+      paramsModified = paramsModified || wtResult.paramsModified;
+    }
+
+    const hasRedirectKeys =
+      GOOGLE_DRIVE_REDIRECT_KEYS.some((k) => windowSearch[k] !== undefined) ||
+      WIKITREE_REDIRECT_KEYS.some((k) => windowSearch[k] !== undefined);
+
+    if (paramsModified || hasRedirectKeys) {
+      // Strip external state / authcode parameters from window.location.search to prevent redirect loops.
+      const cleanWindowSearch = {...windowSearch};
+      GOOGLE_DRIVE_REDIRECT_KEYS.forEach((k) => delete cleanWindowSearch[k]);
+      WIKITREE_REDIRECT_KEYS.forEach((k) => delete cleanWindowSearch[k]);
+
+      const cleanWindowSearchStr = queryString.stringify(cleanWindowSearch);
+      const newUrl =
+        window.location.origin +
+        window.location.pathname +
+        (cleanWindowSearchStr ? '?' + cleanWindowSearchStr : '') +
+        window.location.hash;
+      window.history.replaceState(null, '', newUrl);
+
+      return {
+        pathname: redirectPath || location.pathname,
+        search: queryString.stringify(mergedParams),
+      };
+    }
+
+    return null;
+  }, [location.pathname, location.search]);
+
+  if (redirectTarget) {
     return (
-      <Chart
-        data={data.chartData}
-        selection={selection}
-        chartType={chartType}
-        onSelection={onSelection}
-        onDetailSelection={onDetailSelection}
-        freezeAnimation={freezeAnimation}
-        colors={config.color}
-        hideIds={config.id}
-        hideSex={config.sex}
-      />
+      <Routes>
+        <Route path="*" element={<Navigate to={redirectTarget} replace />} />
+      </Routes>
     );
   }
 
-  function renderMainArea() {
-    switch (state) {
-      case AppState.SHOWING_CHART:
-      case AppState.LOADING_MORE: {
-        if (!data) {
-          return null;
-        }
-        const updatedSelection = getSelection(data.chartData, selection);
-        return (
-          <div id="content">
-            <ErrorPopup
-              open={showErrorPopup}
-              message={error}
-              onDismiss={onDismissErrorPopup}
-            />
-            {state === AppState.LOADING_MORE ? (
-              <Loader active size="small" className="loading-more" />
-            ) : null}
-            <SidebarPushable>
-              <SidePanel
-                data={data}
-                selectedIndiId={detailIndi || updatedSelection.id}
-                config={config}
-                expanded={showSidePanel}
-                onToggle={onToggleSidePanel}
-                onConfigChange={(config) => {
-                  setConfig(config);
-                  updateChartWithConfig(config, data);
-                  updateUrl(configToArgs(config));
-                }}
-              />
-              <SidebarPusher>{renderChart(updatedSelection)}</SidebarPusher>
-            </SidebarPushable>
-          </div>
-        );
-      }
+  const isViewPage = location.pathname === '/view';
 
-      case AppState.ERROR:
-        return <ErrorMessage message={error || 'Unknown error'} />;
-
-      case AppState.INITIAL:
-      case AppState.LOADING:
-        return <Loader active size="large" />;
-    }
+  if (isViewPage) {
+    return (
+      <Routes>
+        <Route path="/view" element={<ViewPage />} />
+        <Route path="*" element={<Navigate to="/view" replace />} />
+      </Routes>
+    );
   }
 
-  return (
-    <>
-      <TopBar
-        data={data?.chartData}
-        allowAllRelativesChart={sourceSpec?.source !== DataSourceEnum.WIKITREE}
-        allowPrintAndDownload={chartType !== ChartType.Donatso}
-        showingChart={
-          location.pathname === '/view' &&
-          (state === AppState.SHOWING_CHART || state === AppState.LOADING_MORE)
-        }
-        standalone={standalone}
-        eventHandlers={{
-          onSelection,
-          onPrint,
-          onDownloadPdf,
-          onDownloadPng,
-          onDownloadSvg,
-        }}
-        showWikiTreeMenus={
-          sourceSpec?.source === DataSourceEnum.WIKITREE && showWikiTreeMenus
-        }
-      />
-      {staticUrl ? (
-        <Routes>
-          <Route path="/view" element={renderMainArea()} />
-          <Route path="*" element={<Navigate to="/view" replace />} />
-        </Routes>
-      ) : (
-        <Routes>
-          <Route path="/" element={<Intro />} />
-          <Route path="/view" element={renderMainArea()} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      )}
-    </>
+  return staticUrl ? (
+    <Routes>
+      <Route path="*" element={<Navigate to="/view" replace />} />
+    </Routes>
+  ) : (
+    <Routes>
+      <Route path="/" element={<IntroPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
