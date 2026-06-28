@@ -25,6 +25,7 @@ export interface GedcomData {
 export interface TopolaData {
   chartData: JsonGedcomData;
   gedcom: GedcomData;
+  images?: Map<string, string>;
 }
 
 export interface Source {
@@ -204,34 +205,68 @@ export function normalizeGedcom(gedcom: JsonGedcomData): JsonGedcomData {
   return sortSpouses(sortChildren(gedcom));
 }
 
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif'];
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
-/** Returns true if the given file name has a known image extension. */
+/**
+ * Returns true if the given file reference points to an image: a name/URL with
+ * a known image extension, or an extensionless but inherently browser-renderable
+ * `blob:` object URL or `data:image/...` URI. The latter two carry no path
+ * extension but are already accepted by `isBrowserLoadable`, so without this
+ * `filterImage` would drop them. A `blob:` URL's type is not derivable from the
+ * string, so it is accepted unconditionally; `data:` is required to be an image.
+ */
 export function isImageFile(fileName: string): boolean {
-  const lowerName = fileName.toLowerCase();
-  return IMAGE_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+  // Anchored tests read only the scheme, so an inlined data: payload (which can
+  // be multi-megabyte) is never scanned or copied.
+  if (/^blob:/i.test(fileName)) {
+    return true;
+  }
+  if (/^data:/i.test(fileName)) {
+    return /^data:image\//i.test(fileName);
+  }
+  const cleanName = fileName.split(/[?#]/)[0].toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => cleanName.endsWith(ext));
 }
 
 /**
  * Removes images that are not HTTP links or do not have known image extensions.
  * Does not modify the input object.
  */
+export function isBrowserLoadable(url: string): boolean {
+  return /^(https?:|blob:|data:|\/\/)/i.test(url);
+}
+
+export function resolveFileUrl(
+  url: string,
+  images?: Map<string, string>,
+): string {
+  if (isBrowserLoadable(url)) {
+    return url;
+  }
+  const normalizedUrl = url.replace(/\\/g, '/');
+  if (images instanceof Map) {
+    const lowercasePath = normalizedUrl.toLowerCase();
+    const mappedUrl = images.get(lowercasePath);
+    if (mappedUrl) {
+      return mappedUrl;
+    }
+  }
+  return normalizedUrl;
+}
+
 function filterImage(indi: JsonIndi, images: Map<string, string>): JsonIndi {
   if (!indi.images || indi.images.length === 0) {
     return indi;
   }
   const newImages: JsonImage[] = [];
   indi.images.forEach((image) => {
-    const filePath = image.url.replaceAll('\\', '/');
-    const fileName = filePath.split('/').pop() || '';
-    const fileUrl = images.get(filePath);
-    const nameUrl = images.get(fileName);
-    if (fileUrl) {
-      newImages.push({url: fileUrl, title: image.title});
-    } else if (nameUrl) {
-      newImages.push({url: nameUrl, title: image.title});
-    } else if (image.url.startsWith('http') && isImageFile(image.url)) {
-      newImages.push(image);
+    const resolvedUrl = resolveFileUrl(image.url, images);
+    const normalizedUrl = image.url.replace(/\\/g, '/');
+    if (
+      resolvedUrl !== normalizedUrl ||
+      (isBrowserLoadable(resolvedUrl) && isImageFile(resolvedUrl))
+    ) {
+      newImages.push({url: resolvedUrl, title: image.title});
     }
   });
   return Object.assign({}, indi, {images: newImages});
@@ -257,12 +292,31 @@ function filterImages(
  * @param images Map from file name to image URL. This is used to pass in
  *   uploaded images.
  */
-export function convertGedcom(
+/**
+ * Yields to the browser event loop, allowing incremental GC and UI updates.
+ * Calls onProgress if provided; does not touch the DOM directly.
+ */
+function yieldToEventLoop(
+  onProgress?: (status: string) => void,
+  status?: string,
+): Promise<void> {
+  if (status) onProgress?.(status);
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+export async function convertGedcom(
   gedcom: string,
   images: Map<string, string>,
-): TopolaData {
+  onProgress?: (status: string) => void,
+): Promise<TopolaData> {
+  await yieldToEventLoop(onProgress, 'Step 1/4: parsing GEDCOM…');
+
   const entries = parseGedcom(gedcom);
+
+  await yieldToEventLoop(onProgress, 'Step 2/4: building family graph…');
+
   const json = gedcomEntriesToJson(entries);
+
   if (
     !json ||
     !json.indis ||
@@ -273,9 +327,18 @@ export function convertGedcom(
     throw new TopolaError('GEDCOM_READ_FAILED', 'Failed to read GEDCOM file');
   }
 
+  await yieldToEventLoop(onProgress, 'Step 3/4: sorting & normalizing…');
+
+  const chartData = filterImages(normalizeGedcom(json), images);
+
+  await yieldToEventLoop(onProgress, 'Step 4/4: indexing records…');
+
+  const gedcomData = prepareGedcom(entries);
+
   return {
-    chartData: filterImages(normalizeGedcom(json), images),
-    gedcom: prepareGedcom(entries),
+    chartData,
+    gedcom: gedcomData,
+    images,
   };
 }
 
@@ -309,7 +372,17 @@ export function getFileName(fileEntry: GedcomEntry): string | undefined {
     (entry) => entry.tag === 'FORM',
   )?.data;
 
-  return fileTitle && fileExtension && fileTitle + '.' + fileExtension;
+  if (fileTitle && fileExtension) {
+    return fileTitle + '.' + fileExtension;
+  }
+
+  if (fileEntry && fileEntry.data) {
+    const path = fileEntry.data.replace(/\\/g, '/');
+    const cleanPath = path.split(/[?#]/)[0];
+    return cleanPath.split('/').pop();
+  }
+
+  return undefined;
 }
 
 function findFileEntry(
@@ -317,8 +390,7 @@ function findFileEntry(
   predicate: (entry: GedcomEntry) => boolean,
 ): GedcomEntry | undefined {
   return objectEntry.tree.find(
-    (entry) =>
-      entry.tag === 'FILE' && entry.data.startsWith('http') && predicate(entry),
+    (entry) => entry.tag === 'FILE' && entry.data && predicate(entry),
   );
 }
 
