@@ -1,6 +1,7 @@
 import {analyticsEvent} from '../util/analytics';
 import {getSoftware, TopolaData} from '../util/gedcom_util';
 import {DataSource, DataSourceEnum, SourceSelection} from './data_source';
+import {storeGedcom} from './gedcom_store';
 import {loadGedcom} from './load_data';
 
 /**
@@ -32,6 +33,8 @@ export interface EmbeddedSourceSpec {
 
 /** GEDCOM file received from outside of the iframe. */
 export class EmbeddedDataSource implements DataSource<EmbeddedSourceSpec> {
+  private activeListener?: (event: MessageEvent) => void;
+
   isNewData(
     _newSource: SourceSelection<EmbeddedSourceSpec>,
     _oldSource: SourceSelection<EmbeddedSourceSpec>,
@@ -45,6 +48,7 @@ export class EmbeddedDataSource implements DataSource<EmbeddedSourceSpec> {
     message: EmbeddedMessage,
     resolve: (value: TopolaData) => void,
     reject: (reason: unknown) => void,
+    onProgress?: (status: string) => void,
   ) {
     if (message.message === EmbeddedMessageType.PARENT_READY) {
       // Parent didn't receive the first 'ready' message, so we need to send it again.
@@ -55,7 +59,17 @@ export class EmbeddedDataSource implements DataSource<EmbeddedSourceSpec> {
         return;
       }
       try {
-        const data = await loadGedcom('', gedcom);
+        const embeddedHash = 'embedded';
+        storeGedcom(embeddedHash, gedcom, new Map());
+        // Embedded data is volatile: the parent re-posts a fresh GEDCOM on every
+        // load (and a page reload re-runs the ready/parent_ready handshake, so
+        // the parent re-sends). That GEDCOM may inline object URLs (blob:/data:)
+        // that die with the previous document. Persisting it to sessionStorage
+        // under the constant 'embedded' key would return dead URLs on the next
+        // load, so opt out of the session cache for embedded data.
+        const data = await loadGedcom(embeddedHash, onProgress, {
+          useSessionCache: false,
+        });
         const software = getSoftware(data.gedcom.head);
         analyticsEvent('embedded_file_loaded', {
           event_label: software,
@@ -70,13 +84,36 @@ export class EmbeddedDataSource implements DataSource<EmbeddedSourceSpec> {
 
   async loadData(
     _source: SourceSelection<EmbeddedSourceSpec>,
+    onProgress?: (status: string) => void,
   ): Promise<TopolaData> {
+    if (this.activeListener) {
+      window.removeEventListener('message', this.activeListener);
+      this.activeListener = undefined;
+    }
+
     // Notify the parent window that we are ready.
     return new Promise<TopolaData>((resolve, reject) => {
+      // Remove the listener once the GEDCOM arrives (resolve) or an error
+      // occurs (reject) to prevent it from accumulating across loadData calls.
+      const wrappedResolve = (value: TopolaData) => {
+        if (this.activeListener === listener) {
+          window.removeEventListener('message', listener);
+          this.activeListener = undefined;
+        }
+        resolve(value);
+      };
+      const wrappedReject = (reason: unknown) => {
+        if (this.activeListener === listener) {
+          window.removeEventListener('message', listener);
+          this.activeListener = undefined;
+        }
+        reject(reason);
+      };
+      const listener = (event: MessageEvent) =>
+        this.onMessage(event.data, wrappedResolve, wrappedReject, onProgress);
+      this.activeListener = listener;
       window.parent.postMessage({message: EmbeddedMessageType.READY}, '*');
-      window.addEventListener('message', (data) =>
-        this.onMessage(data.data, resolve, reject),
-      );
+      window.addEventListener('message', listener);
     });
   }
 }
