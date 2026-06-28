@@ -7,6 +7,7 @@ export enum DataSourceEnum {
   GEDCOM_URL,
   WIKITREE,
   EMBEDDED,
+  GOOGLE_DRIVE,
 }
 
 /** Source specification together with individual selection. */
@@ -27,5 +28,8 @@ export interface DataSource<SourceSpecT> {
     data?: TopolaData,
   ): boolean;
   /** Loads data from the data source. */
-  loadData(spec: SourceSelection<SourceSpecT>): Promise<TopolaData>;
+  loadData(
+    spec: SourceSelection<SourceSpecT>,
+    onProgress?: (status: string) => void,
+  ): Promise<TopolaData>;
 }
