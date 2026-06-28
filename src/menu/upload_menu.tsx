@@ -1,21 +1,26 @@
-import md5 from 'md5';
 import queryString from 'query-string';
 import {SyntheticEvent} from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useLocation, useNavigate} from 'react-router';
 import {Dropdown, Icon, Menu} from 'semantic-ui-react';
+import {storeGedcom} from '../datasource/gedcom_store';
 import {loadFile} from '../datasource/load_data';
 import {analyticsEvent} from '../util/analytics';
+import {fileFingerprint} from '../util/file_fingerprint';
+import {isImageFile} from '../util/gedcom_util';
 import {MenuType} from './menu_item';
-
-function isImageFileName(fileName: string) {
-  const lower = fileName.toLowerCase();
-  return lower.endsWith('.jpg') || lower.endsWith('.png');
-}
 
 interface Props {
   menuType: MenuType;
 }
+
+/**
+ * On touch devices (iOS, Android) the browser's file picker ignores unknown
+ * extensions like .ged and may restrict selection to photos when image types
+ * are listed. Omitting the `accept` attribute lets the OS file browser show
+ * all files without filtering.
+ */
+const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 /** Displays and handles the "Open file" menu. */
 export function UploadMenu(props: Props) {
@@ -42,14 +47,21 @@ export function UploadMenu(props: Props) {
 
     // Convert uploaded images to object URLs.
     filesArray
-      .filter(
-        (file) => file.name !== gedcomFile.name && isImageFileName(file.name),
-      )
-      .forEach((file) => images.set(file.name, URL.createObjectURL(file)));
+      .filter((file) => file.name !== gedcomFile.name && isImageFile(file.name))
+      .forEach((file) =>
+        images.set(file.name.toLowerCase(), URL.createObjectURL(file)),
+      );
 
-    // Hash GEDCOM contents with uploaded image file names.
+    // Fingerprint the file for cache keying. A content sample + metadata is
+    // fast (~1ms vs ~500ms for md5 over the full 10MB file) and collision-
+    // resistant enough for a local session cache.
     const imageFileNames = Array.from(images.keys()).sort().join('|');
-    const hash = md5(md5(gedcom) + imageFileNames);
+    const hash = fileFingerprint(gedcomFile, gedcom, imageFileNames);
+
+    // Keep GEDCOM in memory instead of history.pushState — browsers cap
+    // history state at 640KB (Firefox) or 512KB (Safari), well under the
+    // typical 10MB+ GEDCOM file size.
+    storeGedcom(hash, gedcom, images);
 
     // Use history.replace() when reuploading the same file and history.push() when loading
     // a new file.
@@ -61,10 +73,7 @@ export function UploadMenu(props: Props) {
         pathname: '/view',
         search: queryString.stringify({file: hash}),
       },
-      {
-        replace,
-        state: {data: gedcom, images},
-      },
+      {replace},
     );
   }
 
@@ -88,7 +97,11 @@ export function UploadMenu(props: Props) {
       <input
         className="hidden"
         type="file"
-        accept=".ged,.gdz,.gedzip,.zip,image/*"
+        accept={
+          isMobileDevice
+            ? undefined
+            : '.ged,.gdz,.gedzip,.zip,.jpg,.jpeg,.png,.gif,.webp'
+        }
         id="fileInput"
         multiple
         onChange={handleUpload}
